@@ -142,3 +142,16 @@ def mark_read(chat_id: str, current_user: dict=Depends(get_current_user)):
         if msg.get("sender_id") != current_user["id"] and not msg.get("is_read"):
             db.update_one("messages", msg["id"], {"is_read": True})
     return {"message": "Marked read."}
+
+@router.get("/unread-count")
+def get_unread_count(current_user: dict = Depends(get_current_user)):
+    """Total unread messages across all conversations."""
+    convs = [c for c in db.find_all("conversations")
+             if current_user["id"] in c.get("participant_ids", [])]
+    total = 0
+    for conv in convs:
+        msgs = db.find_many("messages", chat_id=conv["id"])
+        total += len([m for m in msgs
+                      if m.get("sender_id") != current_user["id"]
+                      and not m.get("is_read")])
+    return {"unread_count": total}

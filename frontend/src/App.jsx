@@ -19,11 +19,15 @@ const ChatConversation = lazy(() => import('@/pages/ChatConversation'))
 const StudyRooms  = lazy(() => import('@/pages/StudyRooms'))
 const RoomSession = lazy(() => import('@/pages/RoomSession'))
 const Profile  = lazy(() => import('@/pages/Profile'))
-const Mentor   = () => <div style={{padding:20,color:'white'}}>Mentor - Coming Soon</div>
-const Resources= () => <div style={{padding:20,color:'white'}}>Resources - Coming Soon</div>
-const Colleges = () => <div style={{padding:20,color:'white'}}>Colleges - Coming Soon</div>
-const Leaderboard = () => <div style={{padding:20,color:'white'}}>Leaderboard - Coming Soon</div>
-const Settings = () => <div style={{padding:20,color:'white'}}>Settings - Coming Soon</div>
+const Mentor   = lazy(() => import('@/pages/Mentor'))
+const Resources= lazy(() => import('@/pages/Resources'))
+const Colleges = lazy(() => import('@/pages/Colleges'))
+const Leaderboard = lazy(() => import('@/pages/Leaderboard'))
+const Settings = lazy(() => import('@/pages/Settings'))
+const StreakWars = lazy(() => import('@/pages/StreakWars'))
+const Journey = lazy(() => import('@/pages/Journey'))
+const Notifications = lazy(() => import('@/pages/Notifications'))
+const Explore = lazy(() => import('@/pages/Explore'))
 
 
 // ── Page transition wrapper ───────────────────────────────

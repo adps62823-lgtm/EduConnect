@@ -1,0 +1,24 @@
+[
+  {
+    "id": "c15c5b8893704a199739935345bdd1cd",
+    "name": "Aditya Pratap",
+    "email": "pypi.aditya@outlook.com",
+    "username": "adps",
+    "hashed_password": "$2b$12$wzbVUr29fa07eXUEIVXKReOIDz8TCoheDBrlN6tvLHcYkMxfLd/3a",
+    "grade": "1st Year (College)",
+    "exam_target": "JEE",
+    "school": "DPS",
+    "language": "en",
+    "subjects": [],
+    "bio": "",
+    "avatar_url": null,
+    "cover_url": null,
+    "study_status": "",
+    "role": "student",
+    "is_verified": false,
+    "is_active": true,
+    "help_points": 0,
+    "reputation": 0,
+    "created_at": "2026-03-17T04:28:38.690895+00:00"
+  }
+]

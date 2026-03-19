@@ -1,175 +1,181 @@
 /**
- * Login.jsx — Auth screen
- * Email or username login · animated · school hint · link to register
+ * Login.jsx — Sign in page
+ * Matches Register.jsx aesthetic exactly (same vars, same components, same layout)
  */
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, Zap } from 'lucide-react'
 import useAuthStore from '@/store/authStore'
-import { Button, Input, Divider } from '@/components/ui'
+import { Button, Input } from '@/components/ui'
 
 export default function Login() {
-  const navigate  = useNavigate()
-  const location  = useLocation()
-  const login     = useAuthStore(s => s.login)
-  const loading   = useAuthStore(s => s.loading)
+  const navigate = useNavigate()
+  const login    = useAuthStore(s => s.login)
+  const loading  = useAuthStore(s => s.loading)
 
-  const [form, setForm]         = useState({ identifier: '', password: '' })
-  const [showPass, setShowPass] = useState(false)
-  const [errors, setErrors]     = useState({})
+  const [identifier, setIdentifier] = useState('')
+  const [password,   setPassword]   = useState('')
+  const [showPass,   setShowPass]   = useState(false)
+  const [error,      setError]      = useState('')
 
-  const from = location.state?.from?.pathname || '/feed'
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!identifier.trim()) return setError('Please enter your email or username.')
+    if (!password)          return setError('Please enter your password.')
 
-  function validate() {
-    const e = {}
-    if (!form.identifier.trim()) e.identifier = 'Email or username is required.'
-    if (!form.password)          e.password   = 'Password is required.'
-    setErrors(e)
-    return Object.keys(e).length === 0
+    const result = await login(identifier.trim(), password)
+    if (result.success) {
+      navigate('/feed', { replace: true })
+    } else {
+      setError(result.error || 'Invalid credentials. Please try again.')
+    }
   }
-
-  async function handleSubmit(ev) {
-    ev.preventDefault()
-    if (!validate()) return
-    const result = await login(form.identifier.trim(), form.password)
-    if (result.success) navigate(from, { replace: true })
-  }
-
-  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
 
   return (
     <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: 16,
+      minHeight: '100vh', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', background: 'var(--bg)', padding: 16,
     }}>
-      {/* Background glow blobs */}
+      {/* Background glows — same as Register */}
       <div style={{
-        position: 'fixed', inset: 0, overflow: 'hidden',
-        pointerEvents: 'none', zIndex: 0,
+        position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0,
       }}>
         <div style={{
-          position: 'absolute', top: '10%', left: '15%',
-          width: 400, height: 400,
+          position: 'absolute', top: '-20%', left: '-10%', width: 500, height: 500,
+          borderRadius: '50%',
           background: 'radial-gradient(circle, var(--primary-glow) 0%, transparent 70%)',
-          filter: 'blur(60px)',
         }} />
         <div style={{
-          position: 'absolute', bottom: '10%', right: '10%',
-          width: 350, height: 350,
-          background: 'radial-gradient(circle, var(--accent-light) 0%, transparent 70%)',
-          filter: 'blur(60px)',
+          position: 'absolute', bottom: '-20%', right: '-10%', width: 400, height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, var(--purple-light) 0%, transparent 70%)',
         }} />
       </div>
 
+      {/* Card */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.35 }}
         style={{
-          width: '100%', maxWidth: 420,
           position: 'relative', zIndex: 1,
+          width: '100%', maxWidth: 440,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '36px 28px 28px',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.1, type: 'spring', stiffness: 300 }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 64, height: 64,
-              background: 'linear-gradient(135deg, var(--primary), var(--accent))',
-              borderRadius: 20,
-              marginBottom: 16,
-              boxShadow: '0 8px 32px var(--primary-glow)',
-            }}
-          >
-            <Zap size={32} color="#fff" />
-          </motion.div>
-
+        {/* Logo — same as Register */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 20, margin: '0 auto 14px',
+            background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 32px var(--primary-glow)',
+          }}>
+            <Zap size={28} color="#fff" fill="#fff" />
+          </div>
           <h1 style={{
+            margin: 0, fontSize: '1.65rem', fontWeight: 800,
             background: 'linear-gradient(135deg, var(--text), var(--text-2))',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.04em',
           }}>
-            EduConnect
+            Welcome back
           </h1>
-          <p style={{ color: 'var(--text-3)', marginTop: 6, fontSize: '0.9rem' }}>
-            Study together · Learn faster
+          <p style={{ color: 'var(--text-3)', fontSize: '0.88rem', marginTop: 6 }}>
+            Sign in to your EduConnect account
           </p>
         </div>
 
-        {/* Card */}
-        <div className="card-glass" style={{ padding: 28 }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 6 }}>
-            Welcome back 👋
-          </h2>
-          <p style={{ color: 'var(--text-3)', fontSize: '0.85rem', marginBottom: 24 }}>
-            Sign in with your email or username.
-          </p>
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label style={{ fontSize: '0.83rem', fontWeight: 600,
+                            color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+              Email or Username
+            </label>
             <Input
-              label="Email or Username"
-              placeholder="you@school.edu or @username"
-              value={form.identifier}
-              onChange={set('identifier')}
-              error={errors.identifier}
-              prefix={<Mail size={15} />}
+              type="text"
+              placeholder="you@example.com or @username"
+              value={identifier}
+              onChange={e => setIdentifier(e.target.value)}
+              prefix={<Mail size={15} style={{ color: 'var(--text-3)' }} />}
               autoComplete="username"
               autoFocus
             />
+          </div>
 
+          <div>
+            <label style={{ fontSize: '0.83rem', fontWeight: 600,
+                            color: 'var(--text-2)', display: 'block', marginBottom: 6 }}>
+              Password
+            </label>
             <Input
-              label="Password"
               type={showPass ? 'text' : 'password'}
               placeholder="Your password"
-              value={form.password}
-              onChange={set('password')}
-              error={errors.password}
-              prefix={<Lock size={15} />}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              prefix={<Lock size={15} style={{ color: 'var(--text-3)' }} />}
               suffix={
-                <button
-                  type="button"
-                  onClick={() => setShowPass(v => !v)}
+                <button type="button" onClick={() => setShowPass(v => !v)}
                   style={{ background: 'none', border: 'none', cursor: 'pointer',
-                           color: 'var(--text-3)', display: 'flex', padding: 0 }}
-                >
+                           color: 'var(--text-3)', display: 'flex', padding: 0 }}>
                   {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               }
               autoComplete="current-password"
             />
+          </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              loading={loading}
-              style={{ width: '100%', marginTop: 4 }}
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(225,29,72,0.1))',
+                border: '1px solid var(--red, #e11d48)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fda4af)',
+              }}
             >
-              Sign In
-            </Button>
-          </form>
+              ⚠️ {error}
+            </motion.div>
+          )}
 
-          <Divider label="don't have an account?" />
+          <Button
+            type="submit"
+            disabled={loading}
+            style={{ marginTop: 4, height: 48, fontSize: '1rem', fontWeight: 700 }}
+          >
+            {loading ? 'Signing in…' : 'Sign In'}
+          </Button>
+        </form>
 
-          <Link to="/register">
-            <Button variant="ghost" style={{ width: '100%' }}>
-              Create account
-            </Button>
+        {/* Switch to Register */}
+        <p style={{
+          textAlign: 'center', marginTop: 20,
+          fontSize: '0.85rem', color: 'var(--text-3)',
+        }}>
+          Don't have an account?{' '}
+          <Link to="/register" style={{
+            color: 'var(--primary)', fontWeight: 600, textDecoration: 'none',
+          }}>
+            Create one →
           </Link>
-        </div>
-
-        {/* Footer note */}
-        <p style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 20 }}>
-          By signing in you agree to EduConnect's terms of service.
+        </p>
+        <p style={{
+          textAlign: 'center', marginTop: 10,
+          fontSize: '0.72rem', color: 'var(--text-3)',
+        }}>
+          By signing in you agree to EduConnect's community guidelines.
         </p>
       </motion.div>
     </div>

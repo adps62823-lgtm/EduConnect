@@ -192,7 +192,7 @@ export default function Register() {
 
                 <Input
                   label="Full Name"
-                  placeholder="Riya Sharma"
+                  placeholder="Riya Singh"
                   value={form.name}
                   onChange={set('name')}
                   error={errors.name}
@@ -214,7 +214,7 @@ export default function Register() {
 
                 <Input
                   label="Username"
-                  placeholder="riya_sharma"
+                  placeholder="riya_singh"
                   value={form.username}
                   onChange={e => set('username')({ target: { value: e.target.value.toLowerCase().replace(/\s/g,'') }})}
                   error={errors.username}
