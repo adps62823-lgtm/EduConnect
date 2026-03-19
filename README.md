@@ -12,7 +12,7 @@ A full-stack educational social media platform — think Instagram + StackOverfl
 | Styling    | Pure CSS · CSS Variables · Glassmorphism        |
 | Animation  | Framer Motion                                   |
 | Backend    | Python · FastAPI · Uvicorn                      |
-| Database   | SQLite · SQLAlchemy ORM                         |
+| Database   | JSON Flat File Storage · Hashed Token & Password|
 | Auth       | JWT (python-jose) · bcrypt                      |
 | Real-time  | WebSockets (FastAPI native)                     |
 | File Upload| FastAPI UploadFile → local /uploads             |

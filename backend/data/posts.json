@@ -1,0 +1,24 @@
+[
+  {
+    "id": "aad3b1ba2455429dac65c337aa425c06",
+    "author_id": "c15c5b8893704a199739935345bdd1cd",
+    "content": "Yoohoo, the app worked!!",
+    "images": [],
+    "tags": [],
+    "subject": "Computer Science",
+    "exam_tag": null,
+    "is_anonymous": false,
+    "created_at": "2026-03-17T06:39:51.961992+00:00"
+  },
+  {
+    "id": "61533f806671495cac0d28f57686be37",
+    "author_id": "c15c5b8893704a199739935345bdd1cd",
+    "content": "Sunday",
+    "images": [],
+    "tags": [],
+    "subject": null,
+    "exam_tag": null,
+    "is_anonymous": false,
+    "created_at": "2026-03-19T06:38:05.906945+00:00"
+  }
+]

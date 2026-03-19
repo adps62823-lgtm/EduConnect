@@ -40,8 +40,8 @@ const useThemeStore = create((set, get) => ({
   // ── Load from backend (called on Settings page open) ──
   loadFromBackend: async () => {
     try {
-      const res = await profileAPI.getTheme()
-      const settings = deserializeFromAPI(res.data)
+      const raw = await profileAPI.getTheme()
+      const settings = deserializeFromAPI(raw)
       set(settings)
       applyThemeToDOM(settings)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))

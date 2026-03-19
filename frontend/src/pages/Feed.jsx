@@ -37,7 +37,7 @@ function StoriesRow({ onAddStory }) {
 
   useEffect(() => {
     feedAPI.getStories()
-      .then(r => setStories(r.data))
+      .then(r => setStories(Array.isArray(r) ? r : (r?.stories || [])))
       .catch(() => {})
   }, [])
 
@@ -241,7 +241,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
       images.forEach(f => fd.append('images', f))
 
       const res = await feedAPI.createPost(fd)
-      onCreated(res.data)
+      onCreated(res)
       toast.success('Post shared! 🚀')
       handleClose()
     } catch {
@@ -413,7 +413,7 @@ function PostCard({ post: initialPost, onDelete }) {
     setLoadingComments(true)
     try {
       const res = await feedAPI.getComments(post.id)
-      setComments(res.data)
+      setComments(Array.isArray(res) ? res : (res?.comments || res || []))
     } catch {}
     finally { setLoadingComments(false) }
   }

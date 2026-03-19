@@ -1,8 +1,3 @@
-/**
- * Layout.jsx — App shell
- * Renders sidebar OR bottom/top navbar based on theme setting.
- * Contains the <Outlet /> for all protected pages.
- */
 import { useEffect, useRef } from 'react'
 import { Outlet } from 'react-router-dom'
 import useAuthStore from '@/store/authStore'
@@ -18,16 +13,16 @@ export default function Layout() {
   const loadNotifs      = useNotifStore(s => s.load)
   const didConnect      = useRef(false)
 
-  // Connect WebSocket once on mount
   useEffect(() => {
     if (user?.id && !didConnect.current) {
       didConnect.current = true
-      connect(user.id)
-      loadNotifs()
+      // Wrap in try-catch — WebSocket can fail in Codespaces tunnels
+      try { connect(user.id) } catch (e) { console.warn('WS connect failed:', e) }
+      try { loadNotifs() }    catch (e) { console.warn('loadNotifs failed:', e) }
     }
     return () => {
       if (didConnect.current) {
-        disconnect()
+        try { disconnect() } catch (e) {}
         didConnect.current = false
       }
     }
@@ -35,7 +30,7 @@ export default function Layout() {
 
   const isLeft   = navbar_position === 'left'
   const isTop    = navbar_position === 'top'
-  const isBottom = navbar_position === 'bottom'
+  const isBottom = !isLeft && !isTop
 
   return (
     <div
@@ -48,7 +43,6 @@ export default function Layout() {
       }}
     >
       <Navbar />
-
       <main className="main-content">
         <div className="page-scroll" id="page-scroll">
           <Outlet />

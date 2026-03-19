@@ -83,10 +83,10 @@ export const useWSStore = create((set, get) => ({
     ws.onopen = () => {
       set({ ws, connected: true, reconnecting: false })
       // Announce presence
-      ws.send(JSON.stringify({ type: 'presence', status: 'online' }))
+      try { ws.send(JSON.stringify({ type: "presence", status: "online" })) } catch(e) {}
       // Load unread chat count
       chatAPI.getUnreadCount()
-        .then(r => set({ unreadChats: r.data.unread_count }))
+        .then(r => set({ unreadChats: r.unread_count }))
         .catch(() => {})
     }
 

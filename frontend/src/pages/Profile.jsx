@@ -95,7 +95,7 @@ function FollowersModal({ username, type, onClose }) {
   const [users, setUsers] = useState([]);
   useEffect(() => {
     const fn = type === "followers" ? profileAPI.getFollowers : profileAPI.getFollowing;
-    fn(username).then(setUsers).catch(() => {});
+    fn(username).then(setUsers).catch(() => setLoading(false));
   }, [username, type]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -154,7 +154,7 @@ export default function Profile() {
                       school: p.school||"", exam_target: p.exam_target||"",
                       study_status: p.study_status||"" });
       })
-      .catch(() => navigate("/"))
+      .catch(() => setLoading(false))
       .finally(() => setLoading(false));
   }, [username]);
 
@@ -162,7 +162,7 @@ export default function Profile() {
     if (!profile) return;
     profileAPI.getUserPosts(username, { page: 1, limit: 12 }).then(r => {
       setPosts(r.posts || []); setHasMore(r.has_more); setPostsPage(1);
-    }).catch(() => {});
+    }).catch(() => setLoading(false));
   }, [profile?.id]);
 
   const loadMorePosts = async () => {

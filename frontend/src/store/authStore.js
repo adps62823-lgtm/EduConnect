@@ -1,8 +1,3 @@
-/**
- * authStore.js — Global auth state (Zustand)
- * sessionStorage = login required on every new browser session
- * Exports both default AND named { useAuthStore } for compatibility
- */
 import { create } from 'zustand'
 import { authAPI } from '@/api'
 
@@ -12,7 +7,6 @@ const useAuthStore = create((set, get) => ({
   loading: false,
   error:   null,
 
-  // ── Restore session on app boot ──────────────────────
   initAuth: () => {
     try {
       const token = sessionStorage.getItem('token')
@@ -27,12 +21,10 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ── Register ─────────────────────────────────────────
   register: async (data) => {
     set({ loading: true, error: null })
     try {
-      const res = await authAPI.register(data)
-      const { access_token, user } = res.data
+      const { access_token, user } = await authAPI.register(data)
       sessionStorage.setItem('token', access_token)
       sessionStorage.setItem('user', JSON.stringify(user))
       set({ token: access_token, user, loading: false })
@@ -44,12 +36,10 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ── Login ─────────────────────────────────────────────
   login: async (identifier, password) => {
     set({ loading: true, error: null })
     try {
-      const res = await authAPI.login(identifier, password)
-      const { access_token, user } = res.data
+      const { access_token, user } = await authAPI.login(identifier, password)
       sessionStorage.setItem('token', access_token)
       sessionStorage.setItem('user', JSON.stringify(user))
       set({ token: access_token, user, loading: false })
@@ -61,7 +51,6 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ── Logout ────────────────────────────────────────────
   logout: () => {
     sessionStorage.removeItem('token')
     sessionStorage.removeItem('user')
@@ -69,11 +58,9 @@ const useAuthStore = create((set, get) => ({
     window.location.href = '/login'
   },
 
-  // ── Refresh from server ───────────────────────────────
   refreshMe: async () => {
     try {
-      const res  = await authAPI.me()
-      const user = res.data
+      const user = await authAPI.me()
       sessionStorage.setItem('user', JSON.stringify(user))
       set({ user })
     } catch {
@@ -81,8 +68,6 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ── Patch user locally (used by Profile, Settings etc) ─
-  // Called as updateUser({ avatar_url: '...' }) — merges into user
   updateUser: (updates) => {
     set(state => {
       if (!state.user) return {}
@@ -92,12 +77,10 @@ const useAuthStore = create((set, get) => ({
     })
   },
 
-  // ── Full profile update via API ────────────────────────
   updateMe: async (data) => {
     set({ loading: true })
     try {
-      const res  = await authAPI.updateMe(data)
-      const user = res.data
+      const user = await authAPI.updateMe(data)
       sessionStorage.setItem('user', JSON.stringify(user))
       set({ user, loading: false })
       return { success: true }
@@ -108,12 +91,8 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  // ── Selectors ─────────────────────────────────────────
   isAuthenticated: () => !!get().token,
 }))
 
-// Named export for pages that use: import { useAuthStore } from '@/store/authStore'
 export { useAuthStore }
-
-// Default export for pages that use: import useAuthStore from '@/store/authStore'
 export default useAuthStore

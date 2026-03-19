@@ -1,5 +1,6 @@
 /**
  * api.js — EduConnect API client (FINAL)
+ * Auto-unwraps axios .data so every caller gets the data directly
  */
 import axios from 'axios'
 
@@ -12,7 +13,7 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => res.data,   // ← auto-unwrap: callers get data directly, not res.data
   (err) => {
     if (err.response?.status === 401) {
       sessionStorage.removeItem('token')
@@ -25,54 +26,39 @@ api.interceptors.response.use(
 
 export default api
 
-// ══════════════════════════════════════════════════════════
-// AUTH  →  /api/auth/*
-// ══════════════════════════════════════════════════════════
 export const authAPI = {
-  // JSON body — backend LoginRequest expects { identifier, password }
   register: (data) => api.post('/auth/register', data),
   login: (identifier, password) =>
     api.post('/auth/login', { identifier, password }),
-
   me:               ()       => api.get('/auth/me'),
   updateMe:         (data)   => api.put('/auth/me', data),
   follow:           (userId) => api.post(`/auth/follow/${userId}`),
   searchUsers:      (params) => api.get('/auth/search', { params }),
   getNotifications: ()       => api.get('/auth/notifications'),
   markAllRead:      ()       => api.post('/auth/notifications/read'),
-
   uploadAvatar: (file) => {
     const fd = new FormData(); fd.append('avatar', file)
-    return api.post('/profile/avatar', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return api.post('/profile/avatar', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
   uploadCover: (file) => {
     const fd = new FormData(); fd.append('cover', file)
-    return api.post('/profile/cover', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return api.post('/profile/cover', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
   },
 }
 
-// ══════════════════════════════════════════════════════════
-// FEED  →  /api/feed/*
-// ══════════════════════════════════════════════════════════
 export const feedAPI = {
-  createPost: (formData) =>
-    api.post('/feed/posts', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-  getPosts:      (params)            => api.get('/feed/posts', { params }),
-  deletePost:    (id)                => api.delete(`/feed/posts/${id}`),
-  likePost:      (id)                => api.post(`/feed/posts/${id}/like`),
-  getComments:   (id)                => api.get(`/feed/posts/${id}/comments`),
-  addComment:    (id, data)          => api.post(`/feed/posts/${id}/comments`, data),
+  createPost: (formData) => api.post('/feed/posts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getPosts:      (params)   => api.get('/feed/posts', { params }),
+  deletePost:    (id)       => api.delete(`/feed/posts/${id}`),
+  likePost:      (id)       => api.post(`/feed/posts/${id}/like`),
+  getComments:   (id)       => api.get(`/feed/posts/${id}/comments`),
+  addComment:    (id, data) => api.post(`/feed/posts/${id}/comments`, data),
   deleteComment: (postId, commentId) => api.delete(`/feed/posts/${postId}/comments/${commentId}`),
-  createStory: (formData) =>
-    api.post('/feed/stories', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  createStory: (formData) => api.post('/feed/stories', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   getStories:    ()       => api.get('/feed/stories'),
   viewStory:     (id)     => api.post(`/feed/stories/${id}/view`),
   createJourney: (data)   => api.post('/feed/journey', data),
@@ -81,9 +67,6 @@ export const feedAPI = {
   getTags:       ()       => api.get('/feed/tags'),
 }
 
-// ══════════════════════════════════════════════════════════
-// HELP FORUM  →  /api/help/*
-// ══════════════════════════════════════════════════════════
 export const helpAPI = {
   createQuestion: (data)      => api.post('/help/questions', data),
   getQuestions:   (params)    => api.get('/help/questions', { params }),
@@ -96,9 +79,6 @@ export const helpAPI = {
   seniorMatch:  (qId)      => api.get(`/help/questions/${qId}/senior-match`),
 }
 
-// ══════════════════════════════════════════════════════════
-// CHAT  →  /api/chat/*
-// ══════════════════════════════════════════════════════════
 export const chatAPI = {
   getConversations: ()       => api.get('/chat/conversations'),
   getConversation:  (id)     => api.get(`/chat/conversations/${id}`),
@@ -107,17 +87,14 @@ export const chatAPI = {
   addMember:    (chatId, userId) => api.post(`/chat/conversations/${chatId}/members/${userId}`),
   removeMember: (chatId, userId) => api.delete(`/chat/conversations/${chatId}/members/${userId}`),
   getMessages:  (chatId, params) => api.get(`/chat/conversations/${chatId}/messages`, { params }),
-  sendMessage:  (chatId, formData) =>
-    api.post(`/chat/conversations/${chatId}/messages`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
-  deleteMessage: (chatId, msgId) => api.delete(`/chat/conversations/${chatId}/messages/${msgId}`),
-  markRead:      (chatId)        => api.post(`/chat/conversations/${chatId}/read`),
+  sendMessage:  (chatId, formData) => api.post(`/chat/conversations/${chatId}/messages`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteMessage:  (chatId, msgId) => api.delete(`/chat/conversations/${chatId}/messages/${msgId}`),
+  markRead:       (chatId)        => api.post(`/chat/conversations/${chatId}/read`),
+  getUnreadCount: ()              => api.get('/chat/unread-count'),
 }
 
-// ══════════════════════════════════════════════════════════
-// MENTOR  →  /api/mentor/*
-// ══════════════════════════════════════════════════════════
 export const mentorAPI = {
   listMentors:   (params)   => api.get('/mentor/profiles', { params }),
   createProfile: (data)     => api.post('/mentor/profiles', data),
@@ -126,13 +103,10 @@ export const mentorAPI = {
   connect:           (mentorId) => api.post(`/mentor/connect/${mentorId}`),
   respondConnection: (connId, accept) =>
     api.post(`/mentor/connect/${connId}/respond`, null, { params: { accept } }),
-  getMyConnections: ()              => api.get('/mentor/my-connections'),
+  getMyConnections: ()               => api.get('/mentor/my-connections'),
   addReview:        (mentorId, data) => api.post(`/mentor/profiles/${mentorId}/reviews`, data),
 }
 
-// ══════════════════════════════════════════════════════════
-// STUDY ROOMS  →  /api/rooms/*
-// ══════════════════════════════════════════════════════════
 export const roomAPI = {
   getRooms:      (params)         => api.get('/rooms', { params }),
   getMyRooms:    ()               => api.get('/rooms/my'),
@@ -146,24 +120,17 @@ export const roomAPI = {
   stopPomodoro:  (id)             => api.post(`/rooms/${id}/pomodoro/stop`),
 }
 
-// ══════════════════════════════════════════════════════════
-// RESOURCES  →  /api/resources/*
-// ══════════════════════════════════════════════════════════
 export const resourceAPI = {
   list: (params) => api.get('/resources', { params }),
-  upload: (formData) =>
-    api.post('/resources', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+  upload: (formData) => api.post('/resources', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
   get:      (id) => api.get(`/resources/${id}`),
   delete:   (id) => api.delete(`/resources/${id}`),
   like:     (id) => api.post(`/resources/${id}/like`),
   download: (id) => api.post(`/resources/${id}/download`),
 }
 
-// ══════════════════════════════════════════════════════════
-// PROFILE  →  /api/profile/*
-// ══════════════════════════════════════════════════════════
 export const profileAPI = {
   getProfile:      (username)         => api.get(`/profile/${username}`),
   getUserPosts:    (username, params) => api.get(`/profile/${username}/posts`, { params }),
@@ -176,9 +143,6 @@ export const profileAPI = {
   updateTheme:     (data) => api.put('/profile/theme/me', data),
 }
 
-// ══════════════════════════════════════════════════════════
-// COLLEGES  →  /api/colleges/*
-// ══════════════════════════════════════════════════════════
 export const collegeAPI = {
   list:         (params)         => api.get('/colleges', { params }),
   create:       (data)           => api.post('/colleges', data),
@@ -188,9 +152,6 @@ export const collegeAPI = {
   deleteReview: (cId, rId)       => api.delete(`/colleges/${cId}/reviews/${rId}`),
 }
 
-// ══════════════════════════════════════════════════════════
-// GAMIFICATION  →  /api/gamification/*
-// ══════════════════════════════════════════════════════════
 export const gameAPI = {
   getLeaderboard: (params) => api.get('/gamification/leaderboard', { params }),
   getMyStreak:    ()       => api.get('/gamification/streak'),
@@ -201,9 +162,6 @@ export const gameAPI = {
   getMyStats:     ()       => api.get('/gamification/stats/me'),
 }
 
-// ══════════════════════════════════════════════════════════
-// WEBSOCKET helper
-// ══════════════════════════════════════════════════════════
 export const createWebSocket = (userId) => {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   return new WebSocket(`${protocol}//${window.location.host}/ws/${userId}`)

@@ -1,0 +1,14 @@
+[
+  {
+    "id": "40948ce3d1c546989b50f7525c78dd55",
+    "follower_id": "6979078dc30845dc84596c41549e52d6",
+    "following_id": "c15c5b8893704a199739935345bdd1cd",
+    "created_at": "2026-03-17T07:27:33.763622+00:00"
+  },
+  {
+    "id": "5c81f8157dac4f1aad845bc38323f3f4",
+    "follower_id": "4d92616fa6604a62a0edfc5e96f5b381",
+    "following_id": "c15c5b8893704a199739935345bdd1cd",
+    "created_at": "2026-03-18T08:48:45.387743+00:00"
+  }
+]

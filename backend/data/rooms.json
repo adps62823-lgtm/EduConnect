@@ -1,0 +1,15 @@
+[
+  {
+    "id": "996dfd2f2c324894a6b2ffe2de230adb",
+    "name": "JEE night sessiom",
+    "host_id": "af9a4d244ef54589ba70af59aa1cf3d4",
+    "subject": "Biology",
+    "exam_target": "UPSC",
+    "max_members": 5,
+    "is_private": false,
+    "password": null,
+    "pomodoro_active": true,
+    "pomodoro_start": "2026-03-19T06:20:32.517063+00:00",
+    "created_at": "2026-03-19T06:17:33.861091+00:00"
+  }
+]

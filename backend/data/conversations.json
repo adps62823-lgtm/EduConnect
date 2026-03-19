@@ -1,0 +1,14 @@
+[
+  {
+    "id": "995d7505f4d94aeeb059fce5bcf3c53f",
+    "is_group": true,
+    "name": "Ajma",
+    "participant_ids": [
+      "6979078dc30845dc84596c41549e52d6",
+      "c15c5b8893704a199739935345bdd1cd"
+    ],
+    "created_by": "c15c5b8893704a199739935345bdd1cd",
+    "created_at": "2026-03-19T06:22:47.312492+00:00",
+    "updated_at": "2026-03-19T06:23:51.633104+00:00"
+  }
+]

@@ -1,0 +1,75 @@
+[
+  {
+    "id": "639ea9e021f84643824ccc2e7d59e193",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "like",
+    "title": "New like",
+    "message": "Riya Singh liked your post.",
+    "actor_id": "6979078dc30845dc84596c41549e52d6",
+    "ref_id": "aad3b1ba2455429dac65c337aa425c06",
+    "is_read": false,
+    "created_at": "2026-03-17T07:26:33.233464+00:00"
+  },
+  {
+    "id": "0072fb6473a147158d8d9be12023adf0",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "follow",
+    "title": "New follower",
+    "message": "Riya Singh started following you.",
+    "actor_id": "6979078dc30845dc84596c41549e52d6",
+    "is_read": false,
+    "created_at": "2026-03-17T07:26:44.669530+00:00"
+  },
+  {
+    "id": "5cc510dafbc647c8aa7a83af0da2baac",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "follow",
+    "title": "New follower",
+    "message": "Riya Singh started following you.",
+    "actor_id": "6979078dc30845dc84596c41549e52d6",
+    "is_read": false,
+    "created_at": "2026-03-17T07:26:48.067090+00:00"
+  },
+  {
+    "id": "a579e683581249d6b15d6acef7a7955a",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "like",
+    "title": "New like",
+    "message": "Riya Singh liked your post.",
+    "actor_id": "6979078dc30845dc84596c41549e52d6",
+    "ref_id": "aad3b1ba2455429dac65c337aa425c06",
+    "is_read": false,
+    "created_at": "2026-03-17T07:27:04.366352+00:00"
+  },
+  {
+    "id": "1fd5d9633cf748bd81432a21b2273290",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "follow",
+    "title": "New follower",
+    "message": "Riya Singh started following you.",
+    "actor_id": "6979078dc30845dc84596c41549e52d6",
+    "is_read": false,
+    "created_at": "2026-03-17T07:27:33.763926+00:00"
+  },
+  {
+    "id": "df4c71306b6043c2ac7129759223c46b",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "follow",
+    "title": "New follower",
+    "message": "Dev nil Chatterjee started following you.",
+    "actor_id": "4d92616fa6604a62a0edfc5e96f5b381",
+    "is_read": false,
+    "created_at": "2026-03-18T08:48:45.388119+00:00"
+  },
+  {
+    "id": "b1d3100d84b643f3b5d3d1f9898cbb39",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "type": "like",
+    "title": "New like",
+    "message": "Dev nil Chatterjee liked your post.",
+    "actor_id": "4d92616fa6604a62a0edfc5e96f5b381",
+    "ref_id": "aad3b1ba2455429dac65c337aa425c06",
+    "is_read": false,
+    "created_at": "2026-03-18T08:48:51.431913+00:00"
+  }
+]
