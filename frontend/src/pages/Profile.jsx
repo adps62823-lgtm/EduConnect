@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import {MessageCircle, Heart, Trash2} from "lucide-react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { authAPI, feedAPI, profileAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
@@ -56,13 +57,14 @@ function PostCard({ post, onDelete, currentUserId }) {
       )}
       <div className="post-actions">
         <button className={`action-btn ${liked?"liked":""}`} onClick={toggleLike}>
-          {liked ? "❤️" : "🤍"} {likeCount}
+          <Heart size={20} fill={liked? 'var(--red)': 'none'} />
+          {post.likes_count > 0 && post.likes_count}
         </button>
         <button className="action-btn" onClick={loadComments}>
-          💬 {post.comments_count}
+          <MessageCircle size={20} /> {post.comments_count}
         </button>
         {post.is_mine && (
-          <button className="action-btn danger" onClick={() => onDelete(post.id)}>🗑️</button>
+          <button className="action-btn danger" onClick={() => onDelete(post.id)}> <Trash2 size={20} /> </button>
         )}
         <span className="post-time">{ago(post.created_at)}</span>
       </div>

@@ -235,7 +235,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
     try {
       const fd = new FormData()
       fd.append('content', content)
-      fd.append('is_anonymous', isAnon)
+      fd.append("is_anonymous", isAnon ? "true" : "false")
       if (subject)  fd.append('subject', subject)
       if (examTag)  fd.append('exam_target', examTag)
       images.forEach(f => fd.append('images', f))
@@ -424,7 +424,7 @@ function PostCard({ post: initialPost, onDelete }) {
     setSubmitting(true)
     try {
       const res = await feedAPI.addComment(post.id, { content: commentText.trim() })
-      setComments(c => [...c, res.data])
+      setComments(c => [...c, res])
       setPost(p => ({ ...p, comments_count: p.comments_count + 1 }))
       setCommentText('')
     } catch {}
@@ -682,11 +682,11 @@ export default function Feed() {
       const res = await feedAPI.getPosts({
         page: pageNum,
         limit: 10,
-        filter,
+        feed_type: filter,
       })
-      const { posts: newPosts, pages } = res.data
+      const { posts: newPosts, has_more } = res
       setPosts(prev => reset ? newPosts : [...prev, ...newPosts])
-      setHasMore(pageNum < pages)
+      setHasMore(has_more || false)
       setPage(pageNum)
     } catch {}
     finally {

@@ -7,6 +7,15 @@ from pydantic import BaseModel
 import database as db
 from auth import get_current_user
 
+def _is_anon(post: dict) -> bool:
+    """Handle is_anonymous stored as bool True, string 'true', string 'True', or 1."""
+    val = post.get("is_anonymous", False)
+    if isinstance(val, bool):   return val
+    if isinstance(val, str):    return val.lower() == "true"
+    if isinstance(val, int):    return val == 1
+    return False
+
+
 router = APIRouter()
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 def _now(): return datetime.now(timezone.utc).isoformat()
@@ -55,7 +64,7 @@ async def create_post(
     post = {"id": uuid.uuid4().hex, "author_id": current_user["id"],
             "content": content.strip(), "images": image_urls, "tags": tags_list[:10],
             "subject": subject.strip() or None, "exam_tag": exam_tag.strip() or None,
-            "is_anonymous": is_anonymous, "created_at": _now()}
+            "is_anonymous": is_anonymous in (True, "true", "True", 1, "1"), "created_at": _now()}
     db.insert("posts", post)
     return _serialize_post(post, current_user)
 
@@ -67,18 +76,28 @@ def get_feed(
     current_user: dict = Depends(get_current_user),
 ):
     all_posts = db.find_all("posts")
+
     if feed_type == "following":
+        # Only posts from people I follow + my own, NOT anonymous
         follows = db.find_many("follows", follower_id=current_user["id"])
         ids = {f["following_id"] for f in follows} | {current_user["id"]}
-        posts = [p for p in all_posts if p["author_id"] in ids and not p.get("is_anonymous")]
+        posts = [p for p in all_posts
+                 if p["author_id"] in ids and not _is_anon(p)]
+        posts.sort(key=lambda p: p["created_at"], reverse=True)
+
     elif feed_type == "trending":
-        posts = [p for p in all_posts if not p.get("is_anonymous")]
+        # All non-anonymous posts platform-wide, sorted by likes
+        posts = [p for p in all_posts if not _is_anon(p)]
         posts.sort(key=lambda p: len(db.find_many("post_likes", post_id=p["id"])), reverse=True)
+
     else:
-        posts = [p for p in all_posts if p.get("is_anonymous")]
-    if tag:     posts = [p for p in posts if tag in p.get("tags",[])]
+        # Anonymous tab — ONLY posts where is_anonymous is strictly True
+        posts = [p for p in all_posts if _is_anon(p)]
+        posts.sort(key=lambda p: p["created_at"], reverse=True)
+
+    if tag:     posts = [p for p in posts if tag in p.get("tags", [])]
     if subject: posts = [p for p in posts if p.get("subject") == subject]
-    if feed_type != "trending": posts.sort(key=lambda p: p["created_at"], reverse=True)
+
     total = len(posts)
     return {"posts": [_serialize_post(p, current_user) for p in posts[(page-1)*limit:page*limit]],
             "total": total, "page": page, "has_more": page*limit < total}
@@ -236,7 +255,7 @@ def create_journey(req: JourneyCreate, current_user: dict=Depends(get_current_us
 def explore(q: Optional[str]=None, subject: Optional[str]=None, page: int=1, limit: int=15,
             current_user: dict=Depends(get_current_user)):
     cutoff = (datetime.now(timezone.utc)-timedelta(days=7)).isoformat()
-    posts = [p for p in db.find_all("posts") if not p.get("is_anonymous") and p["created_at"] >= cutoff]
+    posts = [p for p in db.find_all("posts") if not _is_anon(p) and p["created_at"] >= cutoff]
     if q:       posts = [p for p in posts if q.lower() in p.get("content","").lower()]
     if subject: posts = [p for p in posts if p.get("subject") == subject]
     posts.sort(key=lambda p: len(db.find_many("post_likes", post_id=p["id"])), reverse=True)
