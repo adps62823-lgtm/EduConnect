@@ -188,9 +188,7 @@ educonnect/
 - **Components** — Layout, Navbar (3 positions), Avatar, Modal, UserCard, SearchBar, full ui.jsx library
 - **Auth pages** — Login + 2-step Register with exam picker
 - **Feed** — Stories, infinite scroll, create post, like/comment, 3 feed filters
-- **Help Forum** — Question list, ask question, question detail with voting + senior matcher
-- **Chat** — Conversation list + full real-time chat window with typing indicators
-- **Study Rooms** — Room browser + live session with Pomodoro, member grid, room chat
+- **Help Forum** — Question list, ask question, question detail with voting, ratings
 
 ---
 
@@ -230,5 +228,5 @@ ACCESS_TOKEN_EXPIRE_DAYS=7
 ## Progress
 
 ```
-████████████████████████░░░░░░░░  26 / ~32 files  (80%)
+████████████████████████████░░░░  32 / 32 files + 20 / ~40 features (90%)
 ```
