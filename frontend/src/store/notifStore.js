@@ -17,8 +17,7 @@ export const useNotifStore = create((set, get) => ({
   load: async () => {
     set({ loading: true })
     try {
-      const res = await authAPI.getNotifications()
-      const notifs = res.data
+      const notifs = await authAPI.getNotifications()
       set({
         notifications: notifs,
         unread: notifs.filter(n => !n.is_read).length,

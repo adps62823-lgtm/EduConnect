@@ -44,7 +44,7 @@ function AddCollegeModal({ onClose, onAdded }) {
     setLoading(true);
     try {
       const r = await collegeAPI.create(form);
-      onAdded(r.data);
+      onAdded(r);
       onClose();
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to add college.");
@@ -201,7 +201,7 @@ function CollegeDetail({ college, currentUserId, onBack, onReviewSaved }) {
 
   useEffect(() => {
     collegeAPI.get(college.id)
-      .then(r => setData(r.data))
+      .then(r => setData(r))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [college.id]);
@@ -334,7 +334,7 @@ function CollegeDetail({ college, currentUserId, onBack, onReviewSaved }) {
           onClose={() => setShowReview(false)}
           onSaved={() => {
             setLoading(true);
-            collegeAPI.get(college.id).then(r => setData(r.data)).finally(() => setLoading(false));
+            collegeAPI.get(college.id).then(r => setData(r)).finally(() => setLoading(false));
             onReviewSaved?.();
           }}
         />
@@ -389,9 +389,9 @@ export default function Colleges() {
       const params = { page: p, limit: 20, sort: filters.sort };
       if (filters.q) params.q = filters.q;
       const r = await collegeAPI.list(params);
-      const list = r.data?.colleges || r.data || [];
+      const list = r?.colleges || (Array.isArray(r) ? r : []);
       setColleges(prev => reset ? list : [...prev, ...list]);
-      setHasMore(r.data?.has_more || false);
+      setHasMore(r?.has_more || false);
       setPage(p);
     } finally { setLoading(false); }
   };

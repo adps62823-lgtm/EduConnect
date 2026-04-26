@@ -140,7 +140,7 @@ function CreateRoomModal({ open, onClose, onCreated }) {
         max_members: Number(form.max_members),
         password: form.is_private ? form.password : undefined,
       })
-      onCreated(res.data)
+      onCreated(res)
       toast.success(`Room "${form.name}" created!`)
       onClose()
     } catch (err) {
@@ -293,8 +293,8 @@ export default function StudyRooms() {
         roomAPI.getRooms({ limit: 30 }),
         roomAPI.getMyRooms(),
       ])
-      setRooms(allRes.data)
-      setMyRooms(mineRes.data)
+      setRooms(Array.isArray(allRes) ? allRes : (allRes?.rooms || []))
+      setMyRooms(Array.isArray(mineRes) ? mineRes : (mineRes?.rooms || []))
     } catch {}
     finally { setLoading(false) }
   }

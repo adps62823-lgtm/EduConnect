@@ -58,9 +58,11 @@ class UpdateProfileRequest(BaseModel):
 def _public_user(u: dict, current_id: str = None) -> dict:
     followers = db.find_many("follows", following_id=u["id"])
     following = db.find_many("follows", follower_id=u["id"])
-    is_following = False
+    is_following     = False
+    is_close_friend  = False
     if current_id:
-        is_following = db.exists("follows", follower_id=current_id, following_id=u["id"])
+        is_following    = db.exists("follows", follower_id=current_id, following_id=u["id"])
+        is_close_friend = db.exists("close_friends", user_id=current_id, friend_id=u["id"])
     return {
         "id":           u["id"],
         "name":         u["name"],
@@ -80,8 +82,9 @@ def _public_user(u: dict, current_id: str = None) -> dict:
         "reputation":   u.get("reputation", 0),
         "followers_count": len(followers),
         "following_count": len(following),
-        "is_following": is_following,
-        "created_at":   u.get("created_at"),
+        "is_following":    is_following,
+        "is_close_friend": is_close_friend,
+        "created_at":      u.get("created_at"),
     }
 
 def _now() -> str:
@@ -211,7 +214,7 @@ def toggle_follow(user_id: str, current_user: dict = Depends(get_current_user)):
 # ══════════════════════════════════════════════════════════
 
 @router.get("/search")
-def search_users(q: str = "", current_user: dict = Depends(get_current_user)):
+def search_users(q: str = "", limit: int = 10, current_user: dict = Depends(get_current_user)):
     if not q.strip():
         return []
     q_lower = q.lower()
@@ -219,8 +222,43 @@ def search_users(q: str = "", current_user: dict = Depends(get_current_user)):
         u for u in db.find_all("users")
         if q_lower in u.get("name", "").lower()
         or q_lower in u.get("username", "").lower()
-    ][:10]
+    ][:max(1, min(limit, 30))]
     return [_public_user(u, current_user["id"]) for u in results]
+
+# ══════════════════════════════════════════════════════════
+# CLOSE FRIENDS  (Instagram-style inner circle for stories)
+# ══════════════════════════════════════════════════════════
+
+@router.post("/close-friends/{user_id}")
+def toggle_close_friend(user_id: str,
+                        current_user: dict = Depends(get_current_user)):
+    if user_id == current_user["id"]:
+        raise HTTPException(400, "You cannot add yourself.")
+    target = db.find_one("users", id=user_id)
+    if not target:
+        raise HTTPException(404, "User not found.")
+    existing = db.find_one("close_friends",
+                           user_id=current_user["id"], friend_id=user_id)
+    if existing:
+        db.delete_one("close_friends", existing["id"])
+        return {"is_close_friend": False}
+    db.insert("close_friends", {
+        "id":         uuid.uuid4().hex,
+        "user_id":    current_user["id"],
+        "friend_id":  user_id,
+        "created_at": _now(),
+    })
+    return {"is_close_friend": True}
+
+@router.get("/close-friends")
+def list_close_friends(current_user: dict = Depends(get_current_user)):
+    rows = db.find_many("close_friends", user_id=current_user["id"])
+    out = []
+    for r in rows:
+        u = db.find_one("users", id=r["friend_id"])
+        if u:
+            out.append(_public_user(u, current_user["id"]))
+    return out
 
 # ══════════════════════════════════════════════════════════
 # NOTIFICATIONS

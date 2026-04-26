@@ -365,9 +365,9 @@ export default function ChatConversation() {
         chatAPI.getConversation(chatId),
         chatAPI.getMessages(chatId, { page: 1, limit: 40 }),
       ])
-      setConv(convRes.data)
-      setMessages(msgRes.data.messages)
-      setHasMore(msgRes.data.has_more)
+      setConv(convRes)
+      setMessages(msgRes?.messages || [])
+      setHasMore(msgRes?.has_more || false)
       setPage(1)
       // Mark as read
       chatAPI.markRead(chatId).catch(() => {})
@@ -408,8 +408,8 @@ export default function ChatConversation() {
     try {
       const nextPage = page + 1
       const res = await chatAPI.getMessages(chatId, { page: nextPage, limit: 40 })
-      setMessages(prev => [...res.data.messages, ...prev])
-      setHasMore(res.data.has_more)
+      setMessages(prev => [...(res?.messages || []), ...prev])
+      setHasMore(res?.has_more || false)
       setPage(nextPage)
     } catch {}
     finally { setLoadingMore(false) }
@@ -447,7 +447,7 @@ export default function ChatConversation() {
       if (file)        fd.append('file', file)
 
       const res = await chatAPI.sendMessage(chatId, fd)
-      setMessages(prev => [...prev, res.data])
+      setMessages(prev => [...prev, res])
       setText('')
       setFile(null)
       setFilePreview(null)

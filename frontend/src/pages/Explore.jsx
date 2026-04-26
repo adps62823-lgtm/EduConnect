@@ -20,7 +20,7 @@ function PostCard({ post, onLike }) {
     e.stopPropagation();
     try {
       const r = await feedAPI.likePost(post.id);
-      setLiked(r.data.liked); setCount(r.data.likes_count);
+      setLiked(r.liked); setCount(r.likes_count);
     } catch {}
   };
 
@@ -80,16 +80,16 @@ export default function Explore() {
       const params = { page: reset ? 1 : page, limit: 18 };
       if (query) params.q = query;
       const r = await feedAPI.explore(params);
-      const list = r.data?.posts || [];
+      const list = r?.posts || [];
       let filtered = tag ? list.filter(p => p.tags?.includes(tag)) : list;
       setPosts(prev => reset ? filtered : [...prev, ...filtered]);
-      setHasMore(r.data?.has_more || false);
+      setHasMore(r?.has_more || false);
       if (reset) setPage(1);
     } finally { setLoading(false); }
   }, [q, activeTag, page]);
 
   useEffect(() => {
-    feedAPI.getTags().then(r => setTags(r.data || [])).catch(() => {});
+    feedAPI.getTags().then(r => setTags(Array.isArray(r) ? r : [])).catch(() => {});
     load(true);
   }, []);
 

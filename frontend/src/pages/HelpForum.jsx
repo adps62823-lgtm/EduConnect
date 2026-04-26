@@ -146,8 +146,8 @@ export default function HelpForum() {
       const res = await helpAPI.getQuestions({
         ...f, page: p, limit: LIMIT,
       })
-      setQuestions(res.data.questions)
-      setTotal(res.data.total)
+      setQuestions(res?.questions || [])
+      setTotal(res?.total || 0)
       setPage(p)
     } catch {}
     finally { setLoading(false) }

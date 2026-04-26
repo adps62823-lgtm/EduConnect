@@ -115,7 +115,7 @@ function CreateProfileModal({ onClose, onCreated }) {
     setLoading(true);
     try {
       const r = await mentorAPI.createProfile(form);
-      onCreated(r.data);
+      onCreated(r);
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to create profile.");
     } finally { setLoading(false); }
@@ -238,9 +238,9 @@ export default function Mentor() {
       if (filters.subject) params.subject = filters.subject;
       if (filters.exam)    params.exam    = filters.exam;
       const r = await mentorAPI.listMentors(params);
-      const list = r.data?.mentors || r.data || [];
+      const list = r?.mentors || (Array.isArray(r) ? r : []);
       setMentors(prev => reset ? list : [...prev, ...list]);
-      setHasMore(r.data?.has_more || false);
+      setHasMore(r?.has_more || false);
       setPage(p);
     } finally { setLoading(false); }
   };
@@ -249,7 +249,7 @@ export default function Mentor() {
   const loadMyProfile = async () => {
     try {
       const r = await mentorAPI.getMyProfile();
-      setMyProfile(r.data);
+      setMyProfile(r);
     } catch { setMyProfile(null); }
   };
 
@@ -257,7 +257,7 @@ export default function Mentor() {
   const loadMyConns = async () => {
     try {
       const r = await mentorAPI.getMyConnections();
-      setMyConns(r.data || []);
+      setMyConns(Array.isArray(r) ? r : []);
     } catch {}
   };
 
