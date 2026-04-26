@@ -50,7 +50,7 @@ function RichContent({ text }) {
 }
 
 // ── Answer card ───────────────────────────────────────────
-function AnswerCard({ answer: init, questionAuthorId, onAccepted }) {
+function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, onDeleted }) {
   const currentUser = useAuthStore(s => s.user)
   const [answer, setAnswer] = useState(init)
   const [voting, setVoting] = useState(false)
@@ -62,8 +62,8 @@ function AnswerCard({ answer: init, questionAuthorId, onAccepted }) {
     if (voting) return
     setVoting(true)
     try {
-      const res = await helpAPI.voteAnswer(answer.id, dir)
-      setAnswer(a => ({ ...a, vote_count: res.data.vote_count, my_vote: res.data.my_vote }))
+      const res = await helpAPI.voteAnswer(questionId, answer.id, dir)
+      setAnswer(a => ({ ...a, vote_count: res.vote_count, my_vote: res.my_vote }))
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Could not vote.')
     } finally {
@@ -73,7 +73,7 @@ function AnswerCard({ answer: init, questionAuthorId, onAccepted }) {
 
   async function handleAccept() {
     try {
-      await helpAPI.acceptAnswer(answer.id)
+      await helpAPI.acceptAnswer(questionId, answer.id)
       setAnswer(a => ({ ...a, is_accepted: !a.is_accepted }))
       onAccepted(answer.id)
       toast.success(isAccepted ? 'Unaccepted.' : '✅ Answer accepted!')
@@ -85,8 +85,9 @@ function AnswerCard({ answer: init, questionAuthorId, onAccepted }) {
   async function handleDelete() {
     if (!window.confirm('Delete this answer?')) return
     try {
-      await helpAPI.deleteAnswer(answer.id)
+      await helpAPI.deleteAnswer(questionId, answer.id)
       setAnswer(null)
+      onDeleted?.(answer.id)
       toast.success('Answer deleted.')
     } catch {
       toast.error('Could not delete.')
@@ -207,8 +208,8 @@ function SeniorMatcher({ questionId }) {
     if (seniors.length > 0) { setVisible(v => !v); return }
     setLoading(true)
     try {
-      const res = await helpAPI.getSeniorMatches(questionId)
-      setSeniors(res.data)
+      const res = await helpAPI.seniorMatch(questionId)
+      setSeniors(Array.isArray(res) ? res : (res?.seniors || []))
       setVisible(true)
     } catch {}
     finally { setLoading(false) }
@@ -288,8 +289,8 @@ export default function QuestionDetail() {
     async function load() {
       try {
         const res = await helpAPI.getQuestion(questionId)
-        setQuestion(res.data.question)
-        setAnswers(res.data.answers || [])
+        setQuestion(res?.question || res)
+        setAnswers(res?.answers || [])
       } catch {
         toast.error('Question not found.')
         navigate('/help')
@@ -309,7 +310,7 @@ export default function QuestionDetail() {
     setSubmitting(true)
     try {
       const res = await helpAPI.postAnswer(questionId, { content: answerText.trim() })
-      setAnswers(prev => [...prev, res.data])
+      setAnswers(prev => [...prev, res])
       setQuestion(q => ({ ...q, answers_count: (q.answers_count || 0) + 1 }))
       setAnswerText('')
       toast.success('Answer posted! 🎉')
@@ -450,8 +451,10 @@ export default function QuestionDetail() {
                         <AnswerCard
                           key={a.id}
                           answer={a}
+                          questionId={questionId}
                           questionAuthorId={question.author?.id}
                           onAccepted={handleAnswerAccepted}
+                          onDeleted={(id) => setAnswers(prev => prev.filter(x => x.id !== id))}
                         />
                       ))
                     }

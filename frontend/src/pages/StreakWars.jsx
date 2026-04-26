@@ -53,8 +53,8 @@ export default function StreakWars() {
       gameAPI.streakWars(),
       gameAPI.getMyStreak(),
     ]).then(([warsRes, streakRes]) => {
-      setWars(warsRes.data || []);
-      setMyStreak(streakRes.data);
+      setWars(Array.isArray(warsRes) ? warsRes : []);
+      setMyStreak(streakRes);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -62,7 +62,7 @@ export default function StreakWars() {
     if (checkedIn) return;
     try {
       const r = await gameAPI.checkIn();
-      const { streak, points_earned, message } = r.data;
+      const { streak, points_earned, message } = r || {};
       setCheckMsg(message);
       setCheckedIn(true);
       setMyStreak(prev => prev
@@ -70,7 +70,7 @@ export default function StreakWars() {
         : { current_streak: streak, longest_streak: streak, activity_dates: [] }
       );
       // Re-fetch wars to update position
-      gameAPI.streakWars().then(r => setWars(r.data || []));
+      gameAPI.streakWars().then(r => setWars(Array.isArray(r) ? r : []));
     } catch (e) {
       const msg = e.response?.data?.detail || "Could not check in.";
       setCheckMsg(msg);

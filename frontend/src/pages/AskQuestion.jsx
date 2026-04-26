@@ -59,7 +59,7 @@ export default function AskQuestion() {
     try {
       const res = await helpAPI.createQuestion({ ...form, tags })
       toast.success('Question posted! 🎉')
-      navigate(`/help/${res.data.id}`)
+      navigate(`/help/${res.id}`)
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Could not post question.')
     } finally {

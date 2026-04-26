@@ -81,11 +81,11 @@ export default function Leaderboard() {
       gameAPI.getLeaderboard({ scope }),
       gameAPI.getMyStats(),
     ]).then(([lbRes, statsRes]) => {
-      const list = lbRes.data || [];
+      const list = Array.isArray(lbRes) ? lbRes : (lbRes?.leaderboard || []);
       setData(list);
       const idx = list.findIndex(u => u.is_me);
       setMyRank(idx >= 0 ? idx + 1 : null);
-      setMyStats(statsRes.data);
+      setMyStats(statsRes);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [scope]);
 

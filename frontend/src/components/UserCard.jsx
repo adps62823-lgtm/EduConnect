@@ -5,7 +5,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { UserPlus, UserCheck, MessageCircle } from 'lucide-react'
+import { UserPlus, UserCheck, MessageCircle, Star } from 'lucide-react'
 import Avatar from './Avatar'
 import { authAPI } from '@/api'
 import useAuthStore from '@/store/authStore'
@@ -18,7 +18,7 @@ const STATUS_LABELS = {
   sleeping:  { label: '😴 Offline',   color: 'var(--text-3)' },
 }
 
-export default function UserCard({ user: initialUser, showFollow = true, showMessage = false, onClick }) {
+export default function UserCard({ user: initialUser, showFollow = true, showMessage = false, showCloseFriend = false, onClick }) {
   const navigate    = useNavigate()
   const currentUser = useAuthStore(s => s.user)
   const [user, setUser]       = useState(initialUser)
@@ -32,14 +32,14 @@ export default function UserCard({ user: initialUser, showFollow = true, showMes
     if (loading) return
     setLoading(true)
     try {
-      if (user.is_following) {
-        await authAPI.unfollow(user.id)
-        setUser(u => ({ ...u, is_following: false, followers_count: Math.max(0, (u.followers_count||1)-1) }))
-      } else {
-        await authAPI.follow(user.id)
-        setUser(u => ({ ...u, is_following: true, followers_count: (u.followers_count||0)+1 }))
-        toast.success(`Following ${user.name}!`)
-      }
+      const res = await authAPI.follow(user.id)
+      const isFollowing = res?.following ?? !user.is_following
+      setUser(u => ({
+        ...u,
+        is_following: isFollowing,
+        followers_count: Math.max(0, (u.followers_count || 0) + (isFollowing ? 1 : -1)),
+      }))
+      if (isFollowing) toast.success(`Following ${user.name}!`)
     } catch {
       toast.error('Could not update follow.')
     } finally {
@@ -50,6 +50,18 @@ export default function UserCard({ user: initialUser, showFollow = true, showMes
   function handleMessage(e) {
     e.stopPropagation()
     navigate('/chat', { state: { openDMWith: user.id } })
+  }
+
+  async function handleCloseFriend(e) {
+    e.stopPropagation()
+    try {
+      const res = await authAPI.toggleCloseFriend(user.id)
+      const isCF = res?.is_close_friend ?? !user.is_close_friend
+      setUser(u => ({ ...u, is_close_friend: isCF }))
+      toast.success(isCF ? `${user.name} added to close friends ✨` : `Removed from close friends.`)
+    } catch {
+      toast.error('Could not update close friends.')
+    }
   }
 
   const status = STATUS_LABELS[user.study_status] || STATUS_LABELS.chilling
@@ -86,6 +98,16 @@ export default function UserCard({ user: initialUser, showFollow = true, showMes
           {showMessage && (
             <button className="btn-icon btn-sm" onClick={handleMessage} title="Message">
               <MessageCircle size={15} />
+            </button>
+          )}
+          {showCloseFriend && (
+            <button
+              className="btn-icon btn-sm"
+              onClick={handleCloseFriend}
+              title={user.is_close_friend ? 'Remove from close friends' : 'Add to close friends'}
+              style={{ color: user.is_close_friend ? 'var(--green)' : 'var(--text-3)' }}
+            >
+              <Star size={15} fill={user.is_close_friend ? 'currentColor' : 'none'} />
             </button>
           )}
           {showFollow && (

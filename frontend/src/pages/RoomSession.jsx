@@ -221,12 +221,14 @@ export default function RoomSession() {
   async function load() {
     try {
       const res = await roomAPI.getRoom(roomId)
-      setRoom(res.data.room)
-      setMembers(res.data.members || [])
+      const data = res?.room ? res : { room: res, members: res?.members || [] }
+      setRoom(data.room)
+      setMembers(data.members || [])
 
       // Restore pomodoro state from backend
-      if (res.data.room.pomodoro_active && res.data.room.pomodoro_start) {
-        const elapsed = Math.floor((Date.now() - new Date(res.data.room.pomodoro_start)) / 1000)
+      const r = data.room
+      if (r.pomodoro_active && r.pomodoro_start) {
+        const elapsed = Math.floor((Date.now() - new Date(r.pomodoro_start)) / 1000)
         const remaining = Math.max(0, POMODORO_WORK - elapsed)
         setPomoSeconds(remaining)
         setPomoTotal(POMODORO_WORK)

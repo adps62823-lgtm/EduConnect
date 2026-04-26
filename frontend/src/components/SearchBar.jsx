@@ -28,7 +28,7 @@ export default function SearchBar({ placeholder = 'Search students…', onSelect
     timer.current = setTimeout(async () => {
       try {
         const res = await authAPI.searchUsers({ q, limit: 8 })
-        setResults(res.data)
+        setResults(Array.isArray(res) ? res : [])
         setOpen(true)
       } catch {
         setResults([])

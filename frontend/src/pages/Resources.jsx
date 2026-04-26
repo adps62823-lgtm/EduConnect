@@ -31,7 +31,7 @@ function ResourceCard({ resource, onLike, onDownload, currentUserId }) {
   const handleLike = async () => {
     try {
       const r = await resourceAPI.like(resource.id);
-      setLiked(r.data.liked); setLikeCount(r.data.likes_count);
+      setLiked(r.liked); setLikeCount(r.likes_count);
     } catch {}
   };
 
@@ -40,7 +40,7 @@ function ResourceCard({ resource, onLike, onDownload, currentUserId }) {
     setDownloading(true);
     try {
       const r = await resourceAPI.download(resource.id);
-      const url = r.data.file_url;
+      const url = r.file_url;
       const a   = document.createElement("a");
       a.href    = url; a.download = resource.file_name || "resource";
       a.target  = "_blank"; a.click();
@@ -115,7 +115,7 @@ function UploadModal({ onClose, onUploaded }) {
       Object.entries(form).forEach(([k,v]) => fd.append(k, v));
       fd.append("file", file);
       const r = await resourceAPI.upload(fd);
-      onUploaded(r.data);
+      onUploaded(r);
       onClose();
     } catch (e) {
       setError(e.response?.data?.detail || "Upload failed.");
@@ -211,11 +211,11 @@ export default function Resources() {
       if (filters.resource_type) params.resource_type = filters.resource_type;
 
       const r = await resourceAPI.list(params);
-      let list = r.data?.resources || r.data || [];
+      let list = r?.resources || (Array.isArray(r) ? r : []);
       if (tab === "mine") list = list.filter(res => res.is_mine);
 
       setResources(prev => reset ? list : [...prev, ...list]);
-      setHasMore(r.data?.has_more || false);
+      setHasMore(r?.has_more || false);
       setPage(p);
     } finally { setLoading(false); }
   };

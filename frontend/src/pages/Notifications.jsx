@@ -29,7 +29,7 @@ export default function Notifications() {
 
   useEffect(() => {
     authAPI.getNotifications()
-      .then(r => setNotifs(r.data || []))
+      .then(r => setNotifs(Array.isArray(r) ? r : (r?.notifications || [])))
       .catch(() => {})
       .finally(() => setLoading(false));
 

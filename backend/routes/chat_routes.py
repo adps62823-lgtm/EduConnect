@@ -1,8 +1,8 @@
 """chat_routes.py — WhatsApp-clone messaging (JSON store)"""
-import uuid, os, shutil
+import uuid, os, shutil, asyncio
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from pydantic import BaseModel
 import database as db
 from auth import get_current_user
@@ -24,19 +24,37 @@ def _serialize_conv(conv, cu):
     messages = sorted(db.find_many("messages", chat_id=conv["id"]), key=lambda m: m["created_at"])
     last = messages[-1] if messages else None
     unread = len([m for m in messages if m.get("sender_id") != cu["id"] and not m.get("is_read")])
+    pids   = conv.get("participant_ids", [])
+    pinned = bool(db.find_one("chat_pins", user_id=cu["id"], chat_id=conv["id"]))
+    muted  = bool(db.find_one("chat_mutes", user_id=cu["id"], chat_id=conv["id"]))
+    base = {**conv, "last_message": _fmt_msg(last, cu) if last else None,
+            "unread_count": unread, "members_count": len(pids),
+            "is_pinned": pinned, "is_muted": muted}
     if conv.get("is_group"):
-        return {**conv, "last_message": _fmt_msg(last, cu) if last else None, "unread_count": unread}
-    other_id = next((pid for pid in conv.get("participant_ids",[]) if pid != cu["id"]), None)
+        return base
+    other_id = next((pid for pid in pids if pid != cu["id"]), None)
     other = db.find_one("users", id=other_id) if other_id else None
-    return {**conv, "other_user": _fmt_user(other),
-            "name": other["name"] if other else "Unknown",
-            "last_message": _fmt_msg(last, cu) if last else None, "unread_count": unread}
+    return {**base, "other_user": _fmt_user(other),
+            "name": other["name"] if other else "Unknown"}
 
 @router.get("/conversations")
 def get_conversations(current_user: dict=Depends(get_current_user)):
     mine = [c for c in db.find_all("conversations") if current_user["id"] in c.get("participant_ids",[])]
-    mine.sort(key=lambda c: c.get("updated_at", c["created_at"]), reverse=True)
-    return [_serialize_conv(c, current_user) for c in mine]
+    serialized = [_serialize_conv(c, current_user) for c in mine]
+    # Sort: pinned first, then most recently updated
+    serialized.sort(
+        key=lambda c: (
+            0 if c.get("is_pinned") else 1,
+            c.get("last_message", {}).get("created_at") if c.get("last_message") else c.get("updated_at", c["created_at"]),
+        ),
+        reverse=False,
+    )
+    serialized.sort(key=lambda c: c.get("is_pinned", False), reverse=True)
+    other = [c for c in serialized if not c.get("is_pinned")]
+    other.sort(key=lambda c: c.get("updated_at", c["created_at"]), reverse=True)
+    pinned = [c for c in serialized if c.get("is_pinned")]
+    pinned.sort(key=lambda c: c.get("updated_at", c["created_at"]), reverse=True)
+    return pinned + other
 
 @router.get("/conversations/{chat_id}")
 def get_conversation(chat_id: str, current_user: dict=Depends(get_current_user)):
@@ -105,7 +123,7 @@ def get_messages(chat_id: str, page: int=1, limit: int=40, current_user: dict=De
             "total": total, "has_more": page*limit < total}
 
 @router.post("/conversations/{chat_id}/messages", status_code=201)
-async def send_message(chat_id: str, content: str=Form(""),
+async def send_message(chat_id: str, request: Request, content: str=Form(""),
                        file: Optional[UploadFile]=File(None),
                        current_user: dict=Depends(get_current_user)):
     conv = db.find_one("conversations", id=chat_id)
@@ -126,7 +144,18 @@ async def send_message(chat_id: str, content: str=Form(""),
            "is_read": False, "created_at": _now()}
     db.insert("messages", msg)
     db.update_one("conversations", chat_id, {"updated_at": _now()})
-    return _fmt_msg(msg, current_user)
+    payload = _fmt_msg(msg, current_user)
+    # Broadcast to other participants over WebSocket
+    manager = getattr(request.app.state, "manager", None)
+    if manager is not None:
+        for pid in conv.get("participant_ids", []):
+            if pid != current_user["id"]:
+                await manager.send_to_user(pid, {
+                    "type": "chat_message",
+                    "chat_id": chat_id,
+                    **payload,
+                })
+    return payload
 
 @router.delete("/conversations/{chat_id}/messages/{msg_id}")
 def delete_message(chat_id: str, msg_id: str, current_user: dict=Depends(get_current_user)):
@@ -142,6 +171,33 @@ def mark_read(chat_id: str, current_user: dict=Depends(get_current_user)):
         if msg.get("sender_id") != current_user["id"] and not msg.get("is_read"):
             db.update_one("messages", msg["id"], {"is_read": True})
     return {"message": "Marked read."}
+
+# ── Pin / Mute conversations ─────────────────────────────────────────────
+@router.post("/conversations/{chat_id}/pin")
+def toggle_pin(chat_id: str, current_user: dict=Depends(get_current_user)):
+    conv = db.find_one("conversations", id=chat_id)
+    if not conv or current_user["id"] not in conv.get("participant_ids", []):
+        raise HTTPException(403)
+    existing = db.find_one("chat_pins", user_id=current_user["id"], chat_id=chat_id)
+    if existing:
+        db.delete_one("chat_pins", existing["id"])
+        return {"pinned": False}
+    db.insert("chat_pins", {"id": uuid.uuid4().hex, "user_id": current_user["id"],
+                            "chat_id": chat_id, "created_at": _now()})
+    return {"pinned": True}
+
+@router.post("/conversations/{chat_id}/mute")
+def toggle_mute(chat_id: str, current_user: dict=Depends(get_current_user)):
+    conv = db.find_one("conversations", id=chat_id)
+    if not conv or current_user["id"] not in conv.get("participant_ids", []):
+        raise HTTPException(403)
+    existing = db.find_one("chat_mutes", user_id=current_user["id"], chat_id=chat_id)
+    if existing:
+        db.delete_one("chat_mutes", existing["id"])
+        return {"muted": False}
+    db.insert("chat_mutes", {"id": uuid.uuid4().hex, "user_id": current_user["id"],
+                             "chat_id": chat_id, "created_at": _now()})
+    return {"muted": True}
 
 @router.get("/unread-count")
 def get_unread_count(current_user: dict = Depends(get_current_user)):

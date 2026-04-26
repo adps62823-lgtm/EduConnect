@@ -143,7 +143,7 @@ function AddEntryModal({ onClose, onAdded }) {
         topics_done: form.topics_done,
       };
       const r = await feedAPI.createJourney(payload);
-      onAdded(r.data);
+      onAdded(r);
       onClose();
     } catch (e) {
       setError(e.response?.data?.detail || "Failed to add entry.");
@@ -232,16 +232,16 @@ export default function Journey() {
     setLoading(true);
     feedAPI.getJourney({ username: targetUsername, page: 1, limit: 20 })
       .then(r => {
-        setEntries(r.data?.entries || []);
-        setHasMore(r.data?.has_more || false);
+        setEntries(r?.entries || []);
+        setHasMore(r?.has_more || false);
         setPage(1);
       }).catch(() => {}).finally(() => setLoading(false));
   }, [targetUsername]);
 
   const loadMore = async () => {
     const r = await feedAPI.getJourney({ username: targetUsername, page: page + 1, limit: 20 });
-    setEntries(prev => [...prev, ...(r.data?.entries || [])]);
-    setHasMore(r.data?.has_more || false);
+    setEntries(prev => [...prev, ...(r?.entries || [])]);
+    setHasMore(r?.has_more || false);
     setPage(p => p + 1);
   };
 

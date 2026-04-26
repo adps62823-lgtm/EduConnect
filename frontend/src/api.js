@@ -33,6 +33,8 @@ export const authAPI = {
   me:               ()       => api.get('/auth/me'),
   updateMe:         (data)   => api.put('/auth/me', data),
   follow:           (userId) => api.post(`/auth/follow/${userId}`),
+  toggleCloseFriend:(userId) => api.post(`/auth/close-friends/${userId}`),
+  getCloseFriends:  ()       => api.get('/auth/close-friends'),
   searchUsers:      (params) => api.get('/auth/search', { params }),
   getNotifications: ()       => api.get('/auth/notifications'),
   markAllRead:      ()       => api.post('/auth/notifications/read'),
@@ -76,6 +78,7 @@ export const helpAPI = {
   voteAnswer:     (qId, aId, value) =>
     api.post(`/help/questions/${qId}/answers/${aId}/vote`, null, { params: { value } }),
   acceptAnswer: (qId, aId) => api.post(`/help/questions/${qId}/answers/${aId}/accept`),
+  deleteAnswer: (qId, aId) => api.delete(`/help/questions/${qId}/answers/${aId}`),
   seniorMatch:  (qId)      => api.get(`/help/questions/${qId}/senior-match`),
 }
 
@@ -92,6 +95,8 @@ export const chatAPI = {
   }),
   deleteMessage:  (chatId, msgId) => api.delete(`/chat/conversations/${chatId}/messages/${msgId}`),
   markRead:       (chatId)        => api.post(`/chat/conversations/${chatId}/read`),
+  togglePin:      (chatId)        => api.post(`/chat/conversations/${chatId}/pin`),
+  toggleMute:     (chatId)        => api.post(`/chat/conversations/${chatId}/mute`),
   getUnreadCount: ()              => api.get('/chat/unread-count'),
 }
 

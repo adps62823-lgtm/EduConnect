@@ -86,18 +86,22 @@ function StoriesRow({ onAddStory }) {
         </div>
 
         {/* Story groups */}
-        {stories.map(group => (
-          <div key={group.user.id} className="story-item" onClick={() => openViewer(group)}>
-            <div className={`story-ring ${group.has_unviewed ? '' : 'story-ring-viewed'}`}
-              style={{ width: 64, height: 64 }}>
-              <Avatar user={group.user} size="md" showRing={false}
-                style={{ width: 56, height: 56, border: '2px solid var(--bg)', borderRadius: '50%' }} />
+        {stories.map(group => {
+          const u = group.user || group.author
+          if (!u) return null
+          return (
+            <div key={u.id} className="story-item" onClick={() => openViewer({ ...group, user: u })}>
+              <div className={`story-ring ${group.has_unviewed ? '' : 'story-ring-viewed'}`}
+                style={{ width: 64, height: 64 }}>
+                <Avatar user={u} size="md" showRing={false}
+                  style={{ width: 56, height: 56, border: '2px solid var(--bg)', borderRadius: '50%' }} />
+              </div>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-2)', maxWidth: 60, textAlign: 'center' }} className="truncate">
+                {(u.name || '').split(' ')[0]}
+              </span>
             </div>
-            <span style={{ fontSize: '0.65rem', color: 'var(--text-2)', maxWidth: 60, textAlign: 'center' }} className="truncate">
-              {group.user.name.split(' ')[0]}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Story Viewer Modal */}
@@ -242,6 +246,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
 
       const res = await feedAPI.createPost(fd)
       onCreated(res)
+
       toast.success('Post shared! 🚀')
       handleClose()
     } catch {
@@ -395,8 +400,8 @@ function PostCard({ post: initialPost, onDelete }) {
       likes_count: wasLiked ? p.likes_count - 1 : p.likes_count + 1,
     }))
     try {
-      if (wasLiked) await feedAPI.unlikePost(post.id)
-      else          await feedAPI.likePost(post.id)
+      // Backend like endpoint is a toggle
+      await feedAPI.likePost(post.id)
     } catch {
       // Revert
       setPost(p => ({
@@ -413,7 +418,7 @@ function PostCard({ post: initialPost, onDelete }) {
     setLoadingComments(true)
     try {
       const res = await feedAPI.getComments(post.id)
-      setComments(Array.isArray(res) ? res : (res?.comments || res || []))
+      setComments(Array.isArray(res) ? res : (res?.comments || []))
     } catch {}
     finally { setLoadingComments(false) }
   }
@@ -831,19 +836,21 @@ export default function Feed() {
 
 // ── Add Story form (inside modal) ─────────────────────────
 function AddStoryForm({ onClose, onCreated }) {
-  const [caption, setCaption] = useState('')
-  const [file, setFile]       = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [caption, setCaption]   = useState('')
+  const [file, setFile]         = useState(null)
+  const [preview, setPreview]   = useState(null)
+  const [audience, setAudience] = useState('public')
+  const [loading, setLoading]   = useState(false)
   const fileRef = useRef()
 
   async function handleSubmit() {
-    if (!caption.trim() && !file) { toast.error('Add a caption or image.'); return }
+    if (!file) { toast.error('Pick an image or video.'); return }
     setLoading(true)
     try {
       const fd = new FormData()
       if (caption) fd.append('caption', caption)
-      if (file)    fd.append('file', file)
+      fd.append('audience', audience)
+      fd.append('media', file)
       await feedAPI.createStory(fd)
       onCreated()
     } catch {
@@ -879,6 +886,24 @@ function AddStoryForm({ onClose, onCreated }) {
         className="input"
         style={{ minHeight: 80, resize: 'none' }}
       />
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.82rem' }}>
+        <span style={{ color: 'var(--text-3)' }}>Visible to:</span>
+        <button
+          type="button"
+          onClick={() => setAudience('public')}
+          className={`btn btn-sm ${audience === 'public' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          🌐 Everyone
+        </button>
+        <button
+          type="button"
+          onClick={() => setAudience('close_friends')}
+          className={`btn btn-sm ${audience === 'close_friends' ? 'btn-primary' : 'btn-ghost'}`}
+        >
+          ✨ Close Friends
+        </button>
+      </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button

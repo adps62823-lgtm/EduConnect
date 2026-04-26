@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search, Plus, Users, MessageCircle,
-  Check, CheckCheck, X,
+  Check, CheckCheck, X, Pin, BellOff,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { chatAPI } from '@/api'
@@ -20,7 +20,7 @@ import { Button, EmptyState, Spinner, PageHeader } from '@/components/ui'
 import toast from 'react-hot-toast'
 
 // ── Conversation item ─────────────────────────────────────
-function ConvItem({ conv, isActive, onClick }) {
+function ConvItem({ conv, isActive, onClick, onPin }) {
   const currentUser = useAuthStore(s => s.user)
   const isOnline    = useWSStore(s => s.isOnline)
 
@@ -75,11 +75,25 @@ function ConvItem({ conv, isActive, onClick }) {
           }} className="truncate">
             {conv.name}
           </span>
-          {lastMsg && (
-            <span style={{ fontSize: '0.68rem', color: 'var(--text-3)', flexShrink: 0, marginLeft: 8 }}>
-              {formatDistanceToNow(new Date(lastMsg.created_at), { addSuffix: false })}
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginLeft: 8 }}>
+            {conv.is_muted && <BellOff size={11} style={{ color: 'var(--text-3)' }} />}
+            {conv.is_pinned && <Pin size={11} style={{ color: 'var(--primary)' }} fill="currentColor" />}
+            {lastMsg && (
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-3)' }}>
+                {formatDistanceToNow(new Date(lastMsg.created_at), { addSuffix: false })}
+              </span>
+            )}
+            {onPin && (
+              <button
+                className="btn-icon"
+                onClick={(e) => { e.stopPropagation(); onPin(conv) }}
+                title={conv.is_pinned ? 'Unpin' : 'Pin to top'}
+                style={{ padding: 2, marginLeft: 2 }}
+              >
+                <Pin size={12} fill={conv.is_pinned ? 'currentColor' : 'none'} style={{ color: conv.is_pinned ? 'var(--primary)' : 'var(--text-3)' }} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
@@ -140,7 +154,7 @@ function NewGroupModal({ open, onClose, onCreated }) {
         name: name.trim(),
         member_ids: members.map(m => m.id),
       })
-      onCreated(res.data)
+      onCreated(res)
       toast.success(`Group "${name}" created!`)
       onClose()
     } catch {
@@ -231,8 +245,9 @@ export default function Chat() {
   async function loadConvs() {
     try {
       const res = await chatAPI.getConversations()
-      setConvs(res.data)
-      const total = res.data.reduce((s, c) => s + (c.unread_count || 0), 0)
+      const list = Array.isArray(res) ? res : []
+      setConvs(list)
+      const total = list.reduce((s, c) => s + (c.unread_count || 0), 0)
       setUnread(total)
     } catch {}
     finally { setLoading(false) }
@@ -241,7 +256,7 @@ export default function Chat() {
   async function openDM(userId) {
     try {
       const res = await chatAPI.createDM(userId)
-      const conv = res.data
+      const conv = res
       setConvs(prev => {
         const exists = prev.find(c => c.id === conv.id)
         return exists ? prev : [conv, ...prev]
@@ -264,6 +279,24 @@ export default function Chat() {
   function handleGroupCreated(conv) {
     setConvs(prev => [conv, ...prev])
     navigate(`/chat/${conv.id}`)
+  }
+
+  async function handleTogglePin(conv) {
+    try {
+      const res = await chatAPI.togglePin(conv.id)
+      const pinned = res?.pinned ?? !conv.is_pinned
+      setConvs(prev => {
+        const updated = prev.map(c =>
+          c.id === conv.id ? { ...c, is_pinned: pinned } : c
+        )
+        const pins  = updated.filter(c => c.is_pinned)
+        const rest  = updated.filter(c => !c.is_pinned)
+        return [...pins, ...rest]
+      })
+      toast.success(pinned ? 'Pinned to top.' : 'Unpinned.')
+    } catch {
+      toast.error('Could not update pin.')
+    }
   }
 
   const filtered = convs.filter(c =>
@@ -335,6 +368,7 @@ export default function Chat() {
               conv={conv}
               isActive={activeId === conv.id}
               onClick={() => handleConvClick(conv)}
+              onPin={handleTogglePin}
             />
           ))
         )}

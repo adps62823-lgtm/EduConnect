@@ -124,10 +124,11 @@ app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamif
 # ── WebSocket Endpoint ────────────────────────────────────
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    import database as _db
     await manager.connect(websocket, user_id)
-    # Notify others this user is online
+    # Notify others this user is online (frontend listens for `presence`)
     await manager.broadcast(
-        {"type": "user_online", "user_id": user_id},
+        {"type": "presence", "user_id": user_id, "status": "online"},
         exclude=user_id,
     )
     try:
@@ -135,21 +136,45 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
             data = await websocket.receive_json()
             event_type = data.get("type")
 
-            # ── Direct message relay ──
-            if event_type == "chat_message":
-                recipient_id = data.get("to")
-                await manager.send_to_user(recipient_id, {
-                    "type": "chat_message",
-                    "from": user_id,
-                    "message": data.get("message"),
-                    "timestamp": data.get("timestamp"),
-                    "chat_id": data.get("chat_id"),
-                })
+            # ── Presence (online/offline) ──
+            if event_type == "presence":
+                await manager.broadcast(
+                    {"type": "presence", "user_id": user_id,
+                     "status": data.get("status", "online")},
+                    exclude=user_id,
+                )
 
-            # ── Study room signal (WebRTC signalling) ──
-            elif event_type in ("offer", "answer", "ice_candidate"):
+            # ── Typing indicator ──
+            elif event_type == "typing":
+                chat_id = data.get("chat_id")
+                conv = _db.find_one("conversations", id=chat_id)
+                if conv:
+                    for pid in conv.get("participant_ids", []):
+                        if pid != user_id:
+                            await manager.send_to_user(pid, {
+                                "type": "typing",
+                                "user_id": user_id,
+                                "chat_id": chat_id,
+                            })
+
+            elif event_type == "stop_typing":
+                chat_id = data.get("chat_id")
+                conv = _db.find_one("conversations", id=chat_id)
+                if conv:
+                    for pid in conv.get("participant_ids", []):
+                        if pid != user_id:
+                            await manager.send_to_user(pid, {
+                                "type": "stop_typing",
+                                "user_id": user_id,
+                                "chat_id": chat_id,
+                            })
+
+            # ── Study room WebRTC signalling ──
+            elif event_type in ("webrtc_offer", "webrtc_answer", "webrtc_ice",
+                                "offer", "answer", "ice_candidate"):
                 target = data.get("to")
-                await manager.send_to_user(target, {**data, "from": user_id})
+                if target:
+                    await manager.send_to_user(target, {**data, "from": user_id})
 
             # ── Study room join/leave broadcasts ──
             elif event_type == "room_join":
@@ -166,15 +191,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     exclude=user_id,
                 )
 
-            # ── Typing indicator ──
-            elif event_type == "typing":
-                recipient_id = data.get("to")
-                await manager.send_to_user(recipient_id, {
-                    "type": "typing",
-                    "from": user_id,
-                    "chat_id": data.get("chat_id"),
-                })
-
             # ── Ping / heartbeat ──
             elif event_type == "ping":
                 await websocket.send_json({"type": "pong"})
@@ -182,7 +198,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id)
         await manager.broadcast(
-            {"type": "user_offline", "user_id": user_id},
+            {"type": "presence", "user_id": user_id, "status": "offline"},
             exclude=user_id,
         )
 

@@ -181,9 +181,17 @@ def get_stories(current_user: dict = Depends(get_current_user)):
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     follows = db.find_many("follows", follower_id=current_user["id"])
     ids = {f["following_id"] for f in follows} | {current_user["id"]}
-    stories = [s for s in db.find_all("stories") if s["author_id"] in ids and s["created_at"] >= cutoff]
+    visible = []
+    for s in db.find_all("stories"):
+        if s["author_id"] not in ids: continue
+        if s["created_at"] < cutoff:    continue
+        # Close-friends-only visibility
+        if s.get("audience") == "close_friends" and s["author_id"] != current_user["id"]:
+            if not db.exists("close_friends", user_id=s["author_id"], friend_id=current_user["id"]):
+                continue
+        visible.append(s)
     grouped = {}
-    for s in stories:
+    for s in visible:
         aid = s["author_id"]
         views = db.find_many("story_views", story_id=s["id"])
         is_viewed = any(v["viewer_id"] == current_user["id"] for v in views)
@@ -191,6 +199,8 @@ def get_stories(current_user: dict = Depends(get_current_user)):
             u = db.find_one("users", id=aid) or {}
             grouped[aid] = {"author": {"id": u.get("id"), "name": u.get("name"),
                                        "username": u.get("username"), "avatar_url": u.get("avatar_url")},
+                            "user": {"id": u.get("id"), "name": u.get("name"),
+                                     "username": u.get("username"), "avatar_url": u.get("avatar_url")},
                             "stories": [], "has_unviewed": False, "is_mine": aid == current_user["id"]}
         grouped[aid]["stories"].append({**s, "is_viewed": is_viewed})
         if not is_viewed: grouped[aid]["has_unviewed"] = True
@@ -199,13 +209,17 @@ def get_stories(current_user: dict = Depends(get_current_user)):
     return result
 
 @router.post("/stories", status_code=201)
-async def create_story(caption: str = Form(""), media: UploadFile = File(...),
+async def create_story(caption: str = Form(""),
+                       audience: str = Form("public"),
+                       media: UploadFile = File(...),
                        current_user: dict = Depends(get_current_user)):
     ext = os.path.splitext(media.filename)[-1].lower()
     media_type = "video" if ext in {".mp4",".mov"} else "image"
     url = _save_upload(media, "stories")
+    audience = audience if audience in ("public", "close_friends") else "public"
     story = {"id": uuid.uuid4().hex, "author_id": current_user["id"],
              "media_url": url, "media_type": media_type, "caption": caption.strip() or None,
+             "audience": audience,
              "expires_at": (datetime.now(timezone.utc)+timedelta(hours=24)).isoformat(),
              "created_at": _now()}
     db.insert("stories", story)
