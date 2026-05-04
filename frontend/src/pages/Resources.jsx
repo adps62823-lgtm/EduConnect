@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { resourceAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui";
 
 const SUBJECTS = ["Mathematics","Physics","Chemistry","Biology","English","History",
                   "Geography","Economics","Computer Science","Accountancy"];
@@ -124,68 +126,221 @@ function UploadModal({ onClose, onUploaded }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>📤 Upload Resource</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 520
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>📤 Upload Resource</h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <label>Title <span className="req">*</span></label>
-          <input placeholder="e.g. JEE Mains 2023 Physics PYQ"
-                 value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} />
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Title */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Title <span style={{ color: 'var(--red)' }}>*</span></label>
+            <input 
+              className="input"
+              placeholder="e.g. JEE Mains 2023 Physics PYQ"
+              value={form.title} 
+              onChange={e => setForm(f=>({...f,title:e.target.value}))}
+            />
+          </div>
 
-          <label>Description</label>
-          <textarea rows={2} placeholder="What's in this resource?"
-                    value={form.description}
-                    onChange={e => setForm(f=>({...f,description:e.target.value}))} />
+          {/* Description */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Description</label>
+            <textarea 
+              className="input"
+              rows={2} 
+              placeholder="What's in this resource?"
+              value={form.description}
+              onChange={e => setForm(f=>({...f,description:e.target.value}))}
+            />
+          </div>
 
-          <div className="form-row">
-            <div>
-              <label>Type</label>
-              <select value={form.resource_type}
-                      onChange={e => setForm(f=>({...f,resource_type:e.target.value}))}>
+          {/* Type & Subject */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Type</label>
+              <select 
+                className="input"
+                value={form.resource_type}
+                onChange={e => setForm(f=>({...f,resource_type:e.target.value}))}
+              >
                 {TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
               </select>
             </div>
-            <div>
-              <label>Subject</label>
-              <select value={form.subject}
-                      onChange={e => setForm(f=>({...f,subject:e.target.value}))}>
-                <option value="">— None —</option>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Subject</label>
+              <select 
+                className="input"
+                value={form.subject}
+                onChange={e => setForm(f=>({...f,subject:e.target.value}))}
+              >
+                <option value="">Select subject…</option>
                 {SUBJECTS.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
           </div>
 
-          <div className="form-row">
-            <div>
-              <label>Exam Target</label>
-              <input placeholder="e.g. JEE, NEET" value={form.exam_target}
-                     onChange={e => setForm(f=>({...f,exam_target:e.target.value}))} />
+          {/* Exam & Points */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Exam Target</label>
+              <input 
+                className="input"
+                placeholder="e.g. JEE, NEET" 
+                value={form.exam_target}
+                onChange={e => setForm(f=>({...f,exam_target:e.target.value}))}
+              />
             </div>
-            <div>
-              <label>Points Cost (0 = Free)</label>
-              <input type="number" min={0} value={form.points_cost}
-                     onChange={e => setForm(f=>({...f,points_cost:+e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Points Cost (0 = Free)</label>
+              <input 
+                className="input"
+                type="number" 
+                min={0} 
+                value={form.points_cost}
+                onChange={e => setForm(f=>({...f,points_cost:+e.target.value}))}
+              />
             </div>
           </div>
 
-          <label>File <span className="req">*</span></label>
-          <div className="file-drop" onClick={() => fileRef.current.click()}>
-            {file ? (
-              <span>📎 {file.name} ({fmt_size(file.size)})</span>
-            ) : (
-              <span>Click to select file (max 10 MB)</span>
-            )}
+          {/* File Upload */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>File <span style={{ color: 'var(--red)' }}>*</span></label>
+            <button
+              type="button"
+              onClick={() => fileRef.current.click()}
+              style={{
+                width: '100%',
+                padding: '14px',
+                border: `2px dashed var(--border)`,
+                borderRadius: 'var(--radius)',
+                background: 'var(--surface-2)',
+                color: 'var(--text-2)',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                transition: 'all 200ms'
+              }}
+              onMouseEnter={e => {
+                e.target.style.borderColor = 'var(--primary)'
+                e.target.style.background = 'var(--primary-light)'
+              }}
+              onMouseLeave={e => {
+                e.target.style.borderColor = 'var(--border)'
+                e.target.style.background = 'var(--surface-2)'
+              }}
+            >
+              {file ? (
+                <span>📎 {file.name} ({fmt_size(file.size)})</span>
+              ) : (
+                <span>Click to select file (max 10 MB)</span>
+              )}
+            </button>
+            <input ref={fileRef} type="file" hidden onChange={e => setFile(e.target.files[0])} />
           </div>
-          <input ref={fileRef} type="file" hidden onChange={e => setFile(e.target.files[0])} />
 
-          {error && <p className="form-error">{error}</p>}
-          <button className="btn-primary full" onClick={submit} disabled={loading}>
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Uploading…" : "Upload Resource"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

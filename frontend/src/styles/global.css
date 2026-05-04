@@ -114,6 +114,7 @@ html {
   font-size: 16px;
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  height: 100%;
 }
 
 body {
@@ -123,15 +124,20 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
-  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100dvh;
+  height: auto;
+  width: 100%;
 }
 
 #root {
-  height: 100dvh;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  position: relative;
 }
 
 a {
@@ -204,11 +210,12 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
        padding: 16px; overflow-x: auto; font-size: 0.875rem; }
 
 /* ── Layout ──────────────────────────────────────────────── */
+/* ── Layout ──────────────────────────────────────────────── */
 .app-layout {
   display: flex;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
   position: relative;
+  width: 100%;
 }
 
 .main-content {
@@ -217,6 +224,7 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  width: 100%;
 }
 
 .page-scroll {
@@ -225,6 +233,9 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  width: 100%;
+  min-height: 0;
+  padding-bottom: calc(var(--navbar-height) + env(safe-area-inset-bottom) + 16px);
 }
 
 .page-container {
@@ -239,6 +250,26 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
   margin: 0 auto;
   padding: 16px 16px 80px;
   width: 100%;
+}
+
+/* ── Page Shell ────────────────────────────────────────── */
+.page-shell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 /* ── Cards ───────────────────────────────────────────────── */
@@ -797,7 +828,8 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
 }
 
 .message-bubble {
-  max-width: 72%;
+  max-width: 360px;
+  width: fit-content;
   padding: 10px 14px;
   border-radius: 18px;
   font-size: 0.9rem;
@@ -1083,11 +1115,578 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 768px) {
+  :root {
+    --navbar-height: 64px;
+    --content-max: 100%;
+  }
+
   .chat-sidebar { width: 100%; }
   .chat-sidebar.has-active { display: none; }
   .sidebar-desktop { display: none; }
   .wallpaper-grid { grid-template-columns: repeat(3, 1fr); }
   .room-grid { grid-template-columns: repeat(2, 1fr); }
+
+  body {
+    overflow-y: auto;
+    height: auto;
+  }
+
+  #root {
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .main-content {
+    height: auto;
+    overflow: visible;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .page-scroll {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+
+  .settings-page,
+  .notifs-page,
+  .colleges-page,
+  .leaderboard-page,
+  .mentor-page,
+  .journey-page,
+  .profile-page,
+  .resources-page,
+  .streak-wars-page {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: calc(var(--navbar-height) + env(safe-area-inset-bottom) + 16px);
+    box-sizing: border-box;
+  }
+
+  .page-container,
+  .page-container-wide {
+    padding: 16px 12px calc(var(--navbar-height) + env(safe-area-inset-bottom) + 16px) 12px;
+    max-width: 100%;
+  }
+
+  /* Modal for mobile */
+  .modal-content {
+    max-width: 95vw;
+    max-height: 85dvh;
+  }
+
+  /* Input sizing */
+  input, textarea, select {
+    font-size: 16px;
+    padding: 12px 14px;
+    min-height: 44px;
+  }
+
+  /* Button sizing for touch */
+  .btn {
+    min-height: 44px;
+    padding: 12px 20px;
+    font-size: 0.95rem;
+  }
+
+  /* Nav items for touch */
+  .nav-item {
+    min-width: 56px;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Stories row scrolling */
+  .stories-row {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Forms and inputs */
+  .input-group {
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  /* Mentor cards for mobile */
+  .mentor-card {
+    flex-direction: column;
+  }
+
+  /* Question cards */
+  .question-card {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Profile tabs */
+  .profile-tabs {
+    gap: 0;
+    padding: 0;
+  }
+
+  .profile-tab {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+  }
+
+  /* Leaderboard rows */
+  .leaderboard-row {
+    padding: 10px 12px;
+  }
+
+  /* Rating grid */
+  .heatmap-grid {
+    grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
+  }
+
+  /* Mobile bottom navbar padding adjustment */
+  .navbar {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  /* Chat input bar - fixed positioning for mobile keyboards */
+  .chat-input-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 100;
+    gap: 12px;
+  }
+
+  /* Adjust chat messages container when input is fixed */
+  .chat-messages {
+    padding-bottom: 80px; /* Space for fixed input bar */
+  }
+
+  /* Ensure proper stacking */
+  .post-images-grid.grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .post-images-grid.grid-3 .img-0 {
+    grid-column: 1;
+  }
+
+  /* Message bubbles */
+  .message-bubble {
+    max-width: 280px;
+  }
+
+  /* Touch-friendly button sizes */
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Auth pages - ensure full scrollability on mobile */
+  [style*="minHeight: '100'"][style*="display: 'flex'"] {
+    min-height: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* Stories row improvements */
+  .stories-row {
+    padding: 12px 16px;
+    gap: 16px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .stories-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .story-item {
+    min-width: 72px;
+    touch-action: pan-x;
+  }
+
+  /* Modal improvements */
+  .modal-overlay {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: max(16px, env(safe-area-inset-top));
+  }
+
+  .modal-content {
+    margin: 0;
+    max-height: calc(100vh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    border-radius: var(--radius-lg);
+  }
+
+  /* Form inputs - prevent zoom on iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 44px; /* Touch-friendly */
+  }
+
+  /* Button improvements */
+  .btn, button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* Card improvements */
+  .card {
+    margin-bottom: 16px;
+  }
+
+  /* Page container adjustments */
+  .page-container,
+  .page-container-wide {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Mobile-specific page layout fixes */
+  .colleges-page,
+  .leaderboard-page,
+  .mentor-page,
+  .journey-page,
+  .settings-page,
+  .profile-page,
+  .resources-page,
+  .help-page,
+  .notifs-page,
+  .room-page,
+  .studyrooms-page {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .colleges-header,
+  .lb-header,
+  .mentor-header,
+  .journey-header,
+  .settings-header,
+  .profile-header-card,
+  .mentor-tabs,
+  .profile-tabs,
+  .scope-tabs,
+  .mentor-filters,
+  .colleges-filters,
+  .profile-stats-row {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .colleges-grid,
+  .mentor-grid,
+  .journey-list,
+  .profile-posts-grid,
+  .badge-grid,
+  .lb-list {
+    grid-template-columns: 1fr;
+  }
+
+  .podium {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .top3-card {
+    flex: 1 1 120px;
+    max-width: 140px;
+  }
+
+  .lb-row,
+  .mentor-card,
+  .journey-card,
+  .countdown-card,
+  .settings-row,
+  .profile-post-card,
+  .badge-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .countdown-card {
+    gap: 12px;
+  }
+
+  .post-images.grid-3,
+  .post-images-grid.grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Feed page - mobile adjustments */
+  .feed-page {
+    width: 100%;
+    padding: 0;
+  }
+
+  .page-container {
+    padding: 0 16px;
+  }
+
+  /* Explore page - mobile card sizing */
+  .explore-page {
+    width: 100%;
+    padding: 0;
+  }
+
+  .explore-grid,
+  .students-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 0 16px;
+  }
+
+  .explore-card {
+    margin: 0;
+  }
+
+  .explore-page {
+    padding: 16px 0 60px;
+  }
+
+  .explore-hero,
+  .explore-search-panel {
+    padding: 0 16px;
+  }
+
+  .explore-search-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .explore-search {
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  .btn-search,
+  .btn-clear {
+    width: 100% !important;
+    min-height: 44px;
+  }
+
+  .filter-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .filter-select,
+  .explore-search {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  /* Chat page - mobile adjustments */
+  .chat-page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .conv-item {
+    padding: 12px 0;
+    margin: 0 16px;
+    border-left: none;
+  }
+
+  /* Study rooms - mobile grid */
+  .studyrooms-page,
+  .study-rooms-container {
+    width: 100%;
+    padding: 0;
+  }
+
+  [style*="display: 'grid'"][style*="gridTemplateColumns"],
+  div[style*="grid-template-columns: 'repeat"],
+  div[style*="gridTemplateColumns: 'repeat"] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Room session page - mobile video layout */
+  .room-session-page {
+    width: 100%;
+    height: 100%;
+  }
+
+  .room-grid,
+  .members-grid,
+  .video-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Help forum and Q&A - mobile adjustments */
+  .help-page,
+  .question-detail-page,
+  .ask-question-page {
+    width: 100%;
+    padding: 0;
+  }
+
+  .questions-list,
+  .answer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 16px;
+  }
+
+  .question-card,
+  .answer-card {
+    width: 100%;
+  }
+
+  /* Streak wars - calendar improvements */
+  .calendar-strip {
+    width: 100%;
+    overflow-x: auto;
+    padding: 0 16px;
+  }
+
+  .cal-grid {
+    min-width: 100%;
+  }
+
+  /* Filter and search inputs - mobile sizing */
+  .search-input,
+  .input,
+  input[type="text"],
+  input[type="search"] {
+    font-size: 16px !important; /* Prevents iOS zoom on input focus */
+    min-height: 44px;
+  }
+
+  /* Grid-based layouts to single column */
+  [style*="gridTemplateColumns: 'repeat(auto"],
+  [style*="display: 'grid'"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Navbar bottom spacing */
+  .app-layout {
+    padding-bottom: var(--navbar-height);
+  }
+
+  /* Ensure content doesn't get hidden behind navbar */
+  .main-content {
+    padding-bottom: 0;
+  }
+
+  /* Feed specific mobile adjustments */
+  .feed-post {
+    margin-bottom: 16px;
+  }
+
+  .post-actions {
+    padding: 8px 0;
+    gap: 16px;
+  }
+
+  /* Profile page mobile adjustments */
+  .profile-header {
+    padding: 20px 16px;
+    text-align: center;
+  }
+
+  .profile-stats {
+    gap: 24px;
+  }
+
+  /* Settings page mobile adjustments */
+  .settings-group {
+    margin-bottom: 24px;
+  }
+
+  .settings-item {
+    padding: 16px;
+    min-height: 60px;
+  }
+
+  /* Reduce sidebar/left navbar on very small screens */
+  @media (max-width: 480px) {
+    :root {
+      --navbar-height: 60px;
+    }
+
+    .page-container,
+    .page-container-wide {
+      padding: 12px 8px calc(var(--navbar-height) + 12px) 8px;
+    }
+
+    input, textarea, select {
+      font-size: 16px;
+    }
+
+    .card {
+      padding: 12px;
+    }
+
+    .btn {
+      min-height: 44px;
+      padding: 10px 16px;
+    }
+
+    /* Adjust message bubbles for small screens */
+    .message-bubble {
+      max-width: 240px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    /* Chat input bar adjustments for very small screens */
+    .chat-input-bar {
+      padding: 8px 12px;
+      gap: 8px;
+    }
+
+    .chat-input-bar input {
+      font-size: 16px;
+      padding: 12px 16px;
+    }
+
+    /* Stories row for very small screens */
+    .stories-row {
+      padding: 8px 12px;
+      gap: 12px;
+    }
+
+    .story-item {
+      min-width: 64px;
+    }
+  }
 }
 
 @media (min-width: 769px) {
@@ -1102,7 +1701,7 @@ pre  { font-family: var(--font-mono); background: var(--surface-2);
 
 /* ── Utility classes ─────────────────────────────────────── */
 .flex       { display: flex; }
-.flex-col   { flex-direction: column; }
+.flex-col   { flex-direction:column; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
 .justify-center  { justify-content: center; }

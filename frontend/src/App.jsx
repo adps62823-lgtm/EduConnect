@@ -43,7 +43,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
+          minHeight: '100dvh', display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           background: '#0f0f1a', color: '#e8e8f0',
           padding: 32, fontFamily: 'monospace', gap: 16,
@@ -85,7 +85,16 @@ const PageWrapper = ({ children }) => (
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -8 }}
     transition={{ duration: 0.2, ease: 'easeOut' }}
-    style={{ height: '100%', width: '100%' }}
+    style={{
+      minHeight: '100dvh',
+      maxHeight: '100dvh',
+      width: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'visible',
+      overflowX: 'hidden',
+      WebkitOverflowScrolling: 'touch',
+    }}
   >
     {children}
   </motion.div>
@@ -93,7 +102,7 @@ const PageWrapper = ({ children }) => (
 
 const PageLoader = () => (
   <div style={{
-    height: '100vh', display: 'flex',
+    minHeight: '100dvh', display: 'flex',
     alignItems: 'center', justifyContent: 'center',
     background: '#0f0f1a',
   }}>
@@ -144,7 +153,7 @@ const AnimatedRoutes = () => {
           <Route path="/settings"          element={<PageWrapper><Settings /></PageWrapper>} />
         </Route>
         <Route path="*" element={
-          <div style={{ height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, background:'#0f0f1a', color:'#e8e8f0' }}>
+          <div style={{ minHeight:'100dvh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, background:'#0f0f1a', color:'#e8e8f0' }}>
             <div style={{ fontSize:'4rem' }}>📚</div>
             <div style={{ fontSize:'1.5rem', fontWeight:700 }}>Page not found</div>
             <a href="/feed" style={{ color:'#6366f1' }}>Go back to Feed</a>

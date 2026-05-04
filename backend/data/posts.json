@@ -6,7 +6,9 @@
     "images": [
       "/uploads/posts/db9aff0860314088b7a80f259e2b648a.png"
     ],
-    "tags": ["Studies"],
+    "tags": [
+      "Studies"
+    ],
     "subject": "Computer Science",
     "exam_tag": null,
     "is_anonymous": false,
@@ -59,5 +61,30 @@
     "exam_tag": null,
     "is_anonymous": true,
     "created_at": "2026-03-22T07:32:12.910899+00:00"
+  },
+  {
+    "id": "38c74e7a442e46cb88fe477e6ab0d4f5",
+    "author_id": "fdcc38284bab45689ab58d60737cf3a0",
+    "content": "Adu cow",
+    "images": [],
+    "tags": [],
+    "subject": null,
+    "exam_tag": null,
+    "is_anonymous": false,
+    "created_at": "2026-05-03T10:28:55.967798+00:00"
+  },
+  {
+    "id": "1b45415129804135961d9440a4e5a5cc",
+    "author_id": "c15c5b8893704a199739935345bdd1cd",
+    "content": "",
+    "images": [],
+    "videos": [
+      "/uploads/posts/5ce269d639ed4a2197d049dd59f8dac6.mp4"
+    ],
+    "tags": [],
+    "subject": null,
+    "exam_tag": null,
+    "is_anonymous": false,
+    "created_at": "2026-05-04T10:06:24.010114+00:00"
   }
 ]

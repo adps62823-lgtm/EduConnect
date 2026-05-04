@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { mentorAPI, authAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui";
 
 // ── helpers ───────────────────────────────────────────────
 const SUBJECTS = ["Mathematics","Physics","Chemistry","Biology","English","History",
@@ -123,52 +125,208 @@ function CreateProfileModal({ onClose, onCreated }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>🎓 Become a Mentor</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box wide" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 600
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>🎓 Become a Mentor</h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <label>Bio <span className="req">*</span></label>
-          <textarea rows={3} placeholder="Tell students about your experience…"
-                    value={form.bio} onChange={e => setForm(f=>({...f,bio:e.target.value}))} />
-
-          <label>Achievements</label>
-          <input placeholder="e.g. AIR 142 JEE 2023, 99 percentile CAT"
-                 value={form.achievements}
-                 onChange={e => setForm(f=>({...f,achievements:e.target.value}))} />
-
-          <label>Availability</label>
-          <input placeholder="e.g. Weekdays 6–9 PM, Weekends all day"
-                 value={form.availability}
-                 onChange={e => setForm(f=>({...f,availability:e.target.value}))} />
-
-          <label>Hourly Rate (₹) — 0 = Free</label>
-          <input type="number" min={0} value={form.hourly_rate}
-                 onChange={e => setForm(f=>({...f,hourly_rate:+e.target.value}))} />
-
-          <label>Subjects <span className="req">*</span></label>
-          <div className="chip-picker">
-            {SUBJECTS.map(s => (
-              <span key={s} className={`chip ${form.subjects.includes(s)?"selected":""}`}
-                    onClick={() => toggleItem("subjects", s)}>{s}</span>
-            ))}
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Bio */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Bio <span style={{ color: 'var(--red)' }}>*</span></label>
+            <textarea 
+              className="input"
+              rows={3} 
+              placeholder="Tell students about your experience…"
+              value={form.bio} 
+              onChange={e => setForm(f=>({...f,bio:e.target.value}))}
+            />
           </div>
 
-          <label>Exams <span className="req">*</span></label>
-          <div className="chip-picker">
-            {EXAMS.map(e => (
-              <span key={e} className={`chip ${form.exams.includes(e)?"selected":""}`}
-                    onClick={() => toggleItem("exams", e)}>{e}</span>
-            ))}
+          {/* Achievements */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Achievements</label>
+            <input 
+              className="input"
+              placeholder="e.g. AIR 142 JEE 2023, 99 percentile CAT"
+              value={form.achievements}
+              onChange={e => setForm(f=>({...f,achievements:e.target.value}))}
+            />
           </div>
 
-          {error && <p className="form-error">{error}</p>}
-          <button className="btn-primary full" onClick={submit} disabled={loading}>
+          {/* Availability */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Availability</label>
+            <input 
+              className="input"
+              placeholder="e.g. Weekdays 6–9 PM, Weekends all day"
+              value={form.availability}
+              onChange={e => setForm(f=>({...f,availability:e.target.value}))}
+            />
+          </div>
+
+          {/* Hourly Rate */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Hourly Rate (₹) — 0 = Free</label>
+            <input 
+              className="input"
+              type="number" 
+              min={0} 
+              value={form.hourly_rate}
+              onChange={e => setForm(f=>({...f,hourly_rate:+e.target.value}))}
+            />
+          </div>
+
+          {/* Subjects */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 8
+            }}>Subjects <span style={{ color: 'var(--red)' }}>*</span></label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {SUBJECTS.map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleItem("subjects", s)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 'var(--radius-full)',
+                    border: form.subjects.includes(s) ? `2px solid var(--primary)` : `1px solid var(--border)`,
+                    background: form.subjects.includes(s) ? 'var(--primary-light)' : 'transparent',
+                    color: form.subjects.includes(s) ? 'var(--primary)' : 'var(--text-2)',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms'
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Exams */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 8
+            }}>Exams <span style={{ color: 'var(--red)' }}>*</span></label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {EXAMS.map(e => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => toggleItem("exams", e)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 'var(--radius-full)',
+                    border: form.exams.includes(e) ? `2px solid var(--primary)` : `1px solid var(--border)`,
+                    background: form.exams.includes(e) ? 'var(--primary-light)' : 'transparent',
+                    color: form.exams.includes(e) ? 'var(--primary)' : 'var(--text-2)',
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms'
+                  }}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Creating…" : "Create Mentor Profile"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -178,38 +336,119 @@ function ReviewModal({ mentorId, onClose, onReviewed }) {
   const [rating,  setRating]  = useState(0);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const submit = async () => {
-    if (!rating)          return;
-    if (!comment.trim())  return;
+    if (!rating)          return setError("Please select a rating.");
+    if (!comment.trim())  return setError("Please write a comment.");
     setLoading(true);
     try {
       await mentorAPI.addReview(mentorId, { rating, comment });
       onReviewed();
       onClose();
     } catch (e) {
-      alert(e.response?.data?.detail || "Could not submit review.");
+      setError(e.response?.data?.detail || "Could not submit review.");
     } finally { setLoading(false); }
   };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>⭐ Write a Review</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 500
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>⭐ Write a Review</h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <label>Rating</label>
-          <StarRating value={rating} onChange={setRating} />
-          <label>Comment</label>
-          <textarea rows={4} placeholder="Share your experience with this mentor…"
-                    value={comment} onChange={e => setComment(e.target.value)} />
-          <button className="btn-primary full" onClick={submit} disabled={loading || !rating}>
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Rating */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 8
+            }}>Rating <span style={{ color: 'var(--red)' }}>*</span></label>
+            <StarRating value={rating} onChange={setRating} />
+          </div>
+
+          {/* Comment */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Comment <span style={{ color: 'var(--red)' }}>*</span></label>
+            <textarea 
+              className="input"
+              rows={4} 
+              placeholder="Share your experience with this mentor…"
+              value={comment} 
+              onChange={e => setComment(e.target.value)}
+            />
+          </div>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading || !rating}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Submitting…" : "Submit Review"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import { feedAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui";
 
 const SUBJECTS = ["Mathematics","Physics","Chemistry","Biology","English","History",
                   "Geography","Economics","Computer Science","Accountancy"];
@@ -152,66 +154,249 @@ function AddEntryModal({ onClose, onAdded }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>📓 Add Weekly Entry</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 550
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>📓 Add Weekly Entry</h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <div className="form-row">
-            <div>
-              <label>Week Number <span className="req">*</span></label>
-              <input type="number" min={1} value={form.week_number}
-                     onChange={e => setForm(f=>({...f,week_number:e.target.value}))} />
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Week Number & Mock Score */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Week Number <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input 
+                className="input"
+                type="number" 
+                min={1} 
+                value={form.week_number}
+                onChange={e => setForm(f=>({...f,week_number:e.target.value}))}
+              />
             </div>
-            <div>
-              <label>Mock Score (out of 100)</label>
-              <input type="number" min={0} max={100} placeholder="—"
-                     value={form.mock_score}
-                     onChange={e => setForm(f=>({...f,mock_score:e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Mock Score (out of 100)</label>
+              <input 
+                className="input"
+                type="number" 
+                min={0} 
+                max={100} 
+                placeholder="Optional"
+                value={form.mock_score}
+                onChange={e => setForm(f=>({...f,mock_score:e.target.value}))}
+              />
             </div>
           </div>
 
-          <label>Topics Completed</label>
-          <div className="topic-input-row">
-            <input placeholder="Type a topic and press Add"
-                   value={topicInput} onChange={e => setTopicInput(e.target.value)}
-                   onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addTopic())} />
-            <button type="button" className="btn-add-topic" onClick={addTopic}>Add</button>
-          </div>
-          {form.topics_done.length > 0 && (
-            <div className="topics-grid">
-              {form.topics_done.map((t, i) => (
-                <span key={i} className="topic-chip removable">
-                  {t}
-                  <span onClick={() => setForm(f => ({...f, topics_done: f.topics_done.filter((_,j)=>j!==i)}))}>✕</span>
-                </span>
+          {/* Topics */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Topics Completed</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <input 
+                className="input"
+                placeholder="Type a topic and press Add"
+                value={topicInput} 
+                onChange={e => setTopicInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addTopic())}
+                style={{ flex: 1 }}
+              />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                type="button" 
+                onClick={addTopic}
+                style={{ flexShrink: 0 }}
+              >
+                Add
+              </Button>
+            </div>
+            
+            {/* Topic chips */}
+            {form.topics_done.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                {form.topics_done.map((t, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '6px 12px',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
+                      fontSize: '0.8rem',
+                      fontWeight: 500
+                    }}
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({...f, topics_done: f.topics_done.filter((_,j)=>j!==i)}))}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--primary)',
+                        fontSize: '1rem',
+                        padding: 0,
+                        display: 'flex'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Quick subjects */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+              {SUBJECTS.slice(0, 6).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => !form.topics_done.includes(s) && setForm(f=>({...f,topics_done:[...f.topics_done,s]}))}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 'var(--radius-full)',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    color: 'var(--text-2)',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 150ms'
+                  }}
+                  onMouseEnter={e => {
+                    e.target.style.borderColor = 'var(--primary)'
+                    e.target.style.background = 'var(--primary-light)'
+                    e.target.style.color = 'var(--primary)'
+                  }}
+                  onMouseLeave={e => {
+                    e.target.style.borderColor = 'var(--border)'
+                    e.target.style.background = 'transparent'
+                    e.target.style.color = 'var(--text-2)'
+                  }}
+                >
+                  {s}
+                </button>
               ))}
             </div>
-          )}
-          <div className="subject-quick">
-            {SUBJECTS.slice(0,6).map(s => (
-              <span key={s} className="subj-chip"
-                    onClick={() => !form.topics_done.includes(s) && setForm(f=>({...f,topics_done:[...f.topics_done,s]}))}>{s}</span>
-            ))}
           </div>
 
-          <label>Reflection</label>
-          <textarea rows={3} placeholder="How did this week go? What did you learn?"
-                    value={form.reflection}
-                    onChange={e => setForm(f=>({...f,reflection:e.target.value}))} />
+          {/* Reflection */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Reflection</label>
+            <textarea 
+              className="input"
+              rows={3} 
+              placeholder="How did this week go? What did you learn?"
+              value={form.reflection}
+              onChange={e => setForm(f=>({...f,reflection:e.target.value}))}
+            />
+          </div>
 
-          <label>Goals for Next Week</label>
-          <textarea rows={2} placeholder="What will you focus on next week?"
-                    value={form.goals_next}
-                    onChange={e => setForm(f=>({...f,goals_next:e.target.value}))} />
+          {/* Goals */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Goals for Next Week</label>
+            <textarea 
+              className="input"
+              rows={2} 
+              placeholder="What will you focus on next week?"
+              value={form.goals_next}
+              onChange={e => setForm(f=>({...f,goals_next:e.target.value}))}
+            />
+          </div>
 
-          {error && <p className="form-error">{error}</p>}
-          <button className="btn-primary full" onClick={submit} disabled={loading}>
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Saving…" : "Add Entry"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

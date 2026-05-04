@@ -1,0 +1,22 @@
+[
+  {
+    "id": "ad8b091cb8e64e0b86b90724cdfa5cda",
+    "author_id": "c15c5b8893704a199739935345bdd1cd",
+    "media_url": "/uploads/stories/df5b7caaded94ae58e7e6e9af43e32b8.jpg",
+    "media_type": "image",
+    "caption": "40 km cycling completed",
+    "audience": "public",
+    "expires_at": "2026-05-04T10:52:10.863883+00:00",
+    "created_at": "2026-05-03T10:52:10.863883+00:00"
+  },
+  {
+    "id": "cec7880d71fa45b5b7dd9e18096a5ce6",
+    "author_id": "c15c5b8893704a199739935345bdd1cd",
+    "media_url": "/uploads/stories/e518af53cb07473084a56fd8dea706b9.mp4",
+    "media_type": "video",
+    "caption": null,
+    "audience": "public",
+    "expires_at": "2026-05-04T11:02:28.607596+00:00",
+    "created_at": "2026-05-03T11:02:28.607596+00:00"
+  }
+]

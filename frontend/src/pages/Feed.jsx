@@ -153,11 +153,22 @@ function StoriesRow({ onAddStory }) {
 
               {/* Story media */}
               {viewer.stories[viewer.index].media_url ? (
-                <img
-                  src={viewer.stories[viewer.index].media_url}
-                  alt="story"
-                  style={{ width: '100%', maxHeight: '65vh', objectFit: 'contain', background: '#000' }}
-                />
+                viewer.stories[viewer.index].media_type === 'video' ? (
+                  <video
+                    src={viewer.stories[viewer.index].media_url}
+                    alt="story"
+                    style={{ width: '100%', maxHeight: '65vh', objectFit: 'contain', background: '#000' }}
+                    controls
+                    autoPlay
+                    muted
+                  />
+                ) : (
+                  <img
+                    src={viewer.stories[viewer.index].media_url}
+                    alt="story"
+                    style={{ width: '100%', maxHeight: '65vh', objectFit: 'contain', background: '#000' }}
+                  />
+                )
               ) : (
                 <div style={{
                   height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -211,29 +222,38 @@ function CreatePostModal({ open, onClose, onCreated }) {
   const currentUser = useAuthStore(s => s.user)
   const [content, setContent]     = useState('')
   const [images, setImages]       = useState([])   // File[]
-  const [previews, setPreviews]   = useState([])
+  const [videos, setVideos]       = useState([])   // File[]
+  const [imagePreviews, setImagePreviews] = useState([])
+  const [videoPreviews, setVideoPreviews] = useState([])
   const [subject, setSubject]     = useState('')
   const [examTag, setExamTag]     = useState('')
   const [isAnon, setIsAnon]       = useState(false)
   const [loading, setLoading]     = useState(false)
-  const fileRef = useRef()
+  const imageRef = useRef()
+  const videoRef = useRef()
 
   function reset() {
-    setContent(''); setImages([]); setPreviews([])
+    setContent(''); setImages([]); setVideos([]); setImagePreviews([]); setVideoPreviews([])
     setSubject(''); setExamTag(''); setIsAnon(false)
   }
 
   function handleClose() { reset(); onClose() }
 
-  function handleFiles(files) {
-    const arr = Array.from(files).slice(0, 4)
+  function handleImages(files) {
+    const arr = Array.from(files).slice(0, 4 - videos.length)
     setImages(arr)
-    setPreviews(arr.map(f => URL.createObjectURL(f)))
+    setImagePreviews(arr.map(f => URL.createObjectURL(f)))
+  }
+
+  function handleVideos(files) {
+    const arr = Array.from(files).slice(0, 4 - images.length)
+    setVideos(arr)
+    setVideoPreviews(arr.map(f => URL.createObjectURL(f)))
   }
 
   async function handleSubmit() {
-    if (!content.trim() && images.length === 0) {
-      toast.error('Add some text or an image.'); return
+    if (!content.trim() && images.length === 0 && videos.length === 0) {
+      toast.error('Add some text or an image/video.'); return
     }
     setLoading(true)
     try {
@@ -243,6 +263,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
       if (subject)  fd.append('subject', subject)
       if (examTag)  fd.append('exam_target', examTag)
       images.forEach(f => fd.append('images', f))
+      videos.forEach(f => fd.append('videos', f))
 
       const res = await feedAPI.createPost(fd)
       onCreated(res)
@@ -294,17 +315,36 @@ function CreatePostModal({ open, onClose, onCreated }) {
           autoFocus
         />
 
-        {/* Image previews */}
-        {previews.length > 0 && (
-          <div className={`post-images-grid grid-${previews.length}`}
+        {/* Media previews */}
+        {(imagePreviews.length > 0 || videoPreviews.length > 0) && (
+          <div className={`post-images-grid grid-${imagePreviews.length + videoPreviews.length}`}
             style={{ borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            {previews.map((src, i) => (
-              <div key={i} style={{ position: 'relative' }}>
+            {imagePreviews.map((src, i) => (
+              <div key={`img-${i}`} style={{ position: 'relative' }}>
                 <img src={src} alt="" className="post-image" />
                 <button
                   onClick={() => {
                     setImages(imgs => imgs.filter((_, j) => j !== i))
-                    setPreviews(ps => ps.filter((_, j) => j !== i))
+                    setImagePreviews(ps => ps.filter((_, j) => j !== i))
+                  }}
+                  style={{
+                    position: 'absolute', top: 6, right: 6,
+                    background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%',
+                    width: 26, height: 26, display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', cursor: 'pointer', color: '#fff',
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {videoPreviews.map((src, i) => (
+              <div key={`vid-${i}`} style={{ position: 'relative' }}>
+                <video src={src} className="post-image" controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button
+                  onClick={() => {
+                    setVideos(vids => vids.filter((_, j) => j !== i))
+                    setVideoPreviews(ps => ps.filter((_, j) => j !== i))
                   }}
                   style={{
                     position: 'absolute', top: 6, right: 6,
@@ -343,14 +383,25 @@ function CreatePostModal({ open, onClose, onCreated }) {
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               className="btn-icon"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => imageRef.current?.click()}
               title="Add images (max 4)"
             >
               <Image size={18} />
             </button>
             <input
-              ref={fileRef} type="file" multiple accept="image/*" style={{ display: 'none' }}
-              onChange={e => handleFiles(e.target.files)}
+              ref={imageRef} type="file" multiple accept="image/*" style={{ display: 'none' }}
+              onChange={e => handleImages(e.target.files)}
+            />
+            <button
+              className="btn-icon"
+              onClick={() => videoRef.current?.click()}
+              title="Add videos (max 4)"
+            >
+              <Camera size={18} />
+            </button>
+            <input
+              ref={videoRef} type="file" multiple accept="video/*" style={{ display: 'none' }}
+              onChange={e => handleVideos(e.target.files)}
             />
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -362,7 +413,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
               size="sm"
               loading={loading}
               onClick={handleSubmit}
-              disabled={!content.trim() && images.length === 0}
+              disabled={!content.trim() && images.length === 0 && videos.length === 0}
             >
               Post
             </Button>
@@ -446,6 +497,8 @@ function PostCard({ post: initialPost, onDelete }) {
   }
 
   const images = post.images || []
+  const videos = post.videos || []
+  const media = [...images.map(url => ({ type: 'image', url })), ...videos.map(url => ({ type: 'video', url }))]
 
   return (
     <motion.div
@@ -531,15 +584,22 @@ function PostCard({ post: initialPost, onDelete }) {
         </p>
       )}
 
-      {/* Images */}
-      {images.length > 0 && (
+      {/* Media */}
+      {media.length > 0 && (
         <div style={{ position: 'relative' }}>
-          <div className={`post-images-grid grid-${Math.min(images.length, 4)}`}>
-            {images.slice(0, 4).map((img, i) => (
-              <img key={i} src={img} alt="" className="post-image"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setImgIndex(i)}
-              />
+          <div className={`post-images-grid grid-${Math.min(media.length, 4)}`}>
+            {media.slice(0, 4).map((item, i) => (
+              item.type === 'video' ? (
+                <video key={i} src={item.url} className="post-image" controls
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setImgIndex(i)}
+                />
+              ) : (
+                <img key={i} src={item.url} alt="" className="post-image"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setImgIndex(i)}
+                />
+              )
             ))}
           </div>
         </div>
@@ -864,7 +924,11 @@ function AddStoryForm({ onClose, onCreated }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {preview && (
         <div style={{ position: 'relative', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-          <img src={preview} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }} />
+          {file && file.type.startsWith('video/') ? (
+            <video src={preview} style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }} controls />
+          ) : (
+            <img src={preview} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }} />
+          )}
           <button
             onClick={() => { setFile(null); setPreview(null) }}
             style={{
@@ -914,7 +978,7 @@ function AddStoryForm({ onClose, onCreated }) {
           <Camera size={16} /> Add Photo
         </button>
         <input
-          ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+          ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }}
           onChange={e => {
             const f = e.target.files[0]
             if (f) { setFile(f); setPreview(URL.createObjectURL(f)) }

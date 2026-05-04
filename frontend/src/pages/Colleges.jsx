@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { collegeAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
+import { Button } from "../components/ui";
 
 // ── Star Rating ───────────────────────────────────────────
 function StarRating({ value = 0, max = 5, onChange, size = "md" }) {
@@ -53,49 +55,161 @@ function AddCollegeModal({ onClose, onAdded }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>🏫 Add a College</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 500
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>🏫 Add a College</h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <label>College Name <span className="req">*</span></label>
-          <input placeholder="e.g. IIT Bombay" value={form.name}
-                 onChange={e => setForm(f=>({...f,name:e.target.value}))} />
-          <div className="form-row">
-            <div>
-              <label>City <span className="req">*</span></label>
-              <input placeholder="Mumbai" value={form.city}
-                     onChange={e => setForm(f=>({...f,city:e.target.value}))} />
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* College Name */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>College Name <span style={{ color: 'var(--red)' }}>*</span></label>
+            <input 
+              className="input"
+              placeholder="e.g. IIT Bombay" 
+              value={form.name}
+              onChange={e => setForm(f=>({...f,name:e.target.value}))}
+            />
+          </div>
+
+          {/* City & State */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>City <span style={{ color: 'var(--red)' }}>*</span></label>
+              <input 
+                className="input"
+                placeholder="Mumbai" 
+                value={form.city}
+                onChange={e => setForm(f=>({...f,city:e.target.value}))}
+              />
             </div>
-            <div>
-              <label>State</label>
-              <input placeholder="Maharashtra" value={form.state}
-                     onChange={e => setForm(f=>({...f,state:e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>State</label>
+              <input 
+                className="input"
+                placeholder="Maharashtra" 
+                value={form.state}
+                onChange={e => setForm(f=>({...f,state:e.target.value}))}
+              />
             </div>
           </div>
-          <div className="form-row">
-            <div>
-              <label>Type</label>
-              <select value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}>
-                <option value="">— Select —</option>
+
+          {/* Type & Website */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Type</label>
+              <select 
+                className="input"
+                value={form.type} 
+                onChange={e => setForm(f=>({...f,type:e.target.value}))}
+              >
+                <option value="">Select type…</option>
                 {["IIT","NIT","IIIT","Deemed","Private","State","Central","Medical","Law","Management"].map(t =>
                   <option key={t}>{t}</option>
                 )}
               </select>
             </div>
-            <div>
-              <label>Website</label>
-              <input placeholder="https://…" value={form.website}
-                     onChange={e => setForm(f=>({...f,website:e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Website</label>
+              <input 
+                className="input"
+                placeholder="https://…" 
+                value={form.website}
+                onChange={e => setForm(f=>({...f,website:e.target.value}))}
+              />
             </div>
           </div>
-          {error && <p className="form-error">{error}</p>}
-          <button className="btn-primary full" onClick={submit} disabled={loading}>
+
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Adding…" : "Add College"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -134,61 +248,184 @@ function ReviewModal({ college, existingReview, onClose, onSaved }) {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-box wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>✍️ {existingReview ? "Edit" : "Write a"} Review — {college.name}</h3>
-          <button onClick={onClose}>✕</button>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="modal-box wide" 
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+          maxWidth: 600
+        }}
+      >
+        <div style={{
+          padding: '24px 24px 20px',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
+            ✍️ {existingReview ? "Edit" : "Write a"} Review — {college.name}
+          </h3>
+          <button onClick={onClose} style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-3)',
+            fontSize: '1.2rem',
+            padding: 0,
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>✕</button>
         </div>
-        <div className="modal-body">
-          <label>Overall Rating <span className="req">*</span></label>
-          <StarRating value={form.rating} onChange={r => setForm(f=>({...f,rating:r}))} size="lg" />
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16, maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Overall Rating */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 8
+            }}>Overall Rating <span style={{ color: 'var(--red)' }}>*</span></label>
+            <StarRating value={form.rating} onChange={r => setForm(f=>({...f,rating:r}))} size="lg" />
+          </div>
 
-          <label>Review Title</label>
-          <input placeholder="Summarise your experience" value={form.title}
-                 onChange={e => setForm(f=>({...f,title:e.target.value}))} />
+          {/* Review Title */}
+          <div>
+            <label style={{
+              fontSize: '0.83rem',
+              fontWeight: 600,
+              color: 'var(--text-2)',
+              display: 'block',
+              marginBottom: 6
+            }}>Review Title</label>
+            <input 
+              className="input"
+              placeholder="Summarise your experience" 
+              value={form.title}
+              onChange={e => setForm(f=>({...f,title:e.target.value}))}
+            />
+          </div>
 
-          <div className="form-row">
-            <div>
-              <label>Pros</label>
-              <textarea rows={3} placeholder="What's great here?" value={form.pros}
-                        onChange={e => setForm(f=>({...f,pros:e.target.value}))} />
+          {/* Pros & Cons */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Pros</label>
+              <textarea 
+                className="input"
+                rows={3} 
+                placeholder="What's great here?" 
+                value={form.pros}
+                onChange={e => setForm(f=>({...f,pros:e.target.value}))}
+              />
             </div>
-            <div>
-              <label>Cons</label>
-              <textarea rows={3} placeholder="What could be better?" value={form.cons}
-                        onChange={e => setForm(f=>({...f,cons:e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Cons</label>
+              <textarea 
+                className="input"
+                rows={3} 
+                placeholder="What could be better?" 
+                value={form.cons}
+                onChange={e => setForm(f=>({...f,cons:e.target.value}))}
+              />
             </div>
           </div>
 
-          <div className="sub-ratings">
+          {/* Sub-ratings */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0' }}>
             {[["academics","📖 Academics"],["placements","💼 Placements"],
               ["campus_life","🌿 Campus Life"],["faculty","🧑‍🏫 Faculty"]].map(([key,label]) => (
-              <div key={key} className="sub-rating-row">
-                <span className="sub-label">{label}</span>
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-2)' }}>{label}</span>
                 <StarRating value={form[key]} onChange={v => setForm(f=>({...f,[key]:v}))} />
               </div>
             ))}
           </div>
 
-          <div className="form-row">
-            <div>
-              <label>Your Course</label>
-              <input placeholder="e.g. B.Tech CSE" value={form.course}
-                     onChange={e => setForm(f=>({...f,course:e.target.value}))} />
+          {/* Course & Year */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Your Course</label>
+              <input 
+                className="input"
+                placeholder="e.g. B.Tech CSE" 
+                value={form.course}
+                onChange={e => setForm(f=>({...f,course:e.target.value}))}
+              />
             </div>
-            <div>
-              <label>Year / Batch</label>
-              <input placeholder="e.g. 2022-26" value={form.year}
-                     onChange={e => setForm(f=>({...f,year:e.target.value}))} />
+            <div style={{ flex: 1 }}>
+              <label style={{
+                fontSize: '0.83rem',
+                fontWeight: 600,
+                color: 'var(--text-2)',
+                display: 'block',
+                marginBottom: 6
+              }}>Year / Batch</label>
+              <input 
+                className="input"
+                placeholder="e.g. 2022-26" 
+                value={form.year}
+                onChange={e => setForm(f=>({...f,year:e.target.value}))}
+              />
             </div>
           </div>
 
-          {error && <p className="form-error">{error}</p>}
-          <button className="btn-primary full" onClick={submit} disabled={loading}>
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: 'var(--red-light, rgba(239,68,68,0.1))',
+                border: '1px solid var(--red, #ef4444)',
+                borderRadius: 'var(--radius)',
+                padding: '10px 14px',
+                fontSize: '0.85rem',
+                color: 'var(--red, #fca5a5)',
+              }}
+            >
+              ⚠️ {error}
+            </motion.div>
+          )}
+
+          {/* Button */}
+          <Button 
+            variant="primary" 
+            onClick={submit} 
+            disabled={loading}
+            style={{ height: 44, fontSize: '0.95rem', marginTop: 8 }}
+          >
             {loading ? "Saving…" : existingReview ? "Update Review" : "Submit Review"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

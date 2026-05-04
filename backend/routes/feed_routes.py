@@ -41,7 +41,7 @@ def _serialize_post(post, current_user):
                       "avatar_url": u.get("avatar_url"), "grade": u.get("grade"),
                       "exam_target": u.get("exam_target")}
     return {"id": post["id"], "content": post.get("content",""),
-            "images": post.get("images",[]), "tags": post.get("tags",[]),
+            "images": post.get("images",[]), "videos": post.get("videos",[]), "tags": post.get("tags",[]),
             "subject": post.get("subject"), "exam_tag": post.get("exam_tag"),
             "is_anonymous": post.get("is_anonymous", False),
             "author": author, "author_id": post["author_id"],
@@ -54,15 +54,17 @@ async def create_post(
     content: str = Form(""), subject: str = Form(""), exam_tag: str = Form(""),
     tags: str = Form("[]"), is_anonymous: bool = Form(False),
     images: List[UploadFile] = File(default=[]),
+    videos: List[UploadFile] = File(default=[]),
     current_user: dict = Depends(get_current_user),
 ):
-    if not content.strip() and not images:
-        raise HTTPException(400, "Post must have content or at least one image.")
+    if not content.strip() and not images and not videos:
+        raise HTTPException(400, "Post must have content or at least one image/video.")
     try: tags_list = json.loads(tags)
     except: tags_list = []
     image_urls = [_save_upload(img, "posts") for img in images if img.filename]
+    video_urls = [_save_upload(vid, "posts") for vid in videos if vid.filename]
     post = {"id": uuid.uuid4().hex, "author_id": current_user["id"],
-            "content": content.strip(), "images": image_urls, "tags": tags_list[:10],
+            "content": content.strip(), "images": image_urls, "videos": video_urls, "tags": tags_list[:10],
             "subject": subject.strip() or None, "exam_tag": exam_tag.strip() or None,
             "is_anonymous": is_anonymous in (True, "true", "True", 1, "1"), "created_at": _now()}
     db.insert("posts", post)

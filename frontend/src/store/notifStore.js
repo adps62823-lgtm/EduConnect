@@ -1,26 +1,29 @@
-/**
- * notifStore.js — Notifications + WebSocket state (Zustand)
- * Handles: notification list, unread count, real-time WS events,
- *          chat relay, typing indicators, online presence
- */
 import { create } from 'zustand'
 import { authAPI, chatAPI, createWebSocket } from '@/api'
 import toast from 'react-hot-toast'
 
-// ── Notification Store ────────────────────────────────────
-export const useNotifStore = create((set, get) => ({
-  notifications: [],
-  unread:        0,
-  loading:       false,
+function normalizeNotifications(payload) {
+  if (Array.isArray(payload)) return payload
+  return payload?.notifications || []
+}
 
-  // Load notifications from backend
+function isRoomChat(chatId) {
+  return typeof chatId === 'string' && chatId.startsWith('room_')
+}
+
+export const useNotifStore = create((set) => ({
+  notifications: [],
+  unread: 0,
+  loading: false,
+
   load: async () => {
     set({ loading: true })
     try {
-      const notifs = await authAPI.getNotifications()
+      const payload = await authAPI.getNotifications()
+      const notifications = normalizeNotifications(payload)
       set({
-        notifications: notifs,
-        unread: notifs.filter(n => !n.is_read).length,
+        notifications,
+        unread: notifications.filter((item) => !item.is_read).length,
         loading: false,
       })
     } catch {
@@ -28,12 +31,11 @@ export const useNotifStore = create((set, get) => ({
     }
   },
 
-  // Mark all as read
   markAllRead: async () => {
     try {
       await authAPI.markAllRead()
-      set(state => ({
-        notifications: state.notifications.map(n => ({ ...n, is_read: true })),
+      set((state) => ({
+        notifications: state.notifications.map((item) => ({ ...item, is_read: true })),
         unread: 0,
       }))
     } catch {
@@ -41,92 +43,147 @@ export const useNotifStore = create((set, get) => ({
     }
   },
 
-  // Push a new notification in real-time (from WebSocket)
   push: (notif) => {
-    set(state => ({
+    set((state) => ({
       notifications: [notif, ...state.notifications],
       unread: state.unread + 1,
     }))
-    // Show toast for important types
+
     const toastTypes = ['message', 'mention', 'streak_milestone', 'badge', 'mentor_accepted']
     if (toastTypes.includes(notif.type)) {
       toast(notif.message, {
-        icon: _notifIcon(notif.type),
+        icon: notifIcon(notif.type),
         duration: 4000,
       })
     }
   },
 
-  decrement: () => set(s => ({ unread: Math.max(0, s.unread - 1) })),
-  reset:     () => set({ notifications: [], unread: 0 }),
+  decrement: () => set((state) => ({ unread: Math.max(0, state.unread - 1) })),
+  clearUnread: () => set({ unread: 0 }),
+  reset: () => set({ notifications: [], unread: 0, loading: false }),
 }))
 
-
-// ── WebSocket Store ───────────────────────────────────────
 export const useWSStore = create((set, get) => ({
-  ws:           null,
-  connected:    false,
+  ws: null,
+  connected: false,
   reconnecting: false,
-  onlineUsers:  new Set(),
-  typingUsers:  {},     // { chatId: Set<userId> }
-  unreadChats:  0,
+  onlineUsers: new Set(),
+  typingUsers: {},
+  unreadChats: 0,
+  _listeners: {},
+  _reconnectTimer: null,
+  _manualDisconnect: false,
+  _userId: null,
 
-  // ── Connect ──────────────────────────────────────────
   connect: (userId) => {
-    const existing = get().ws
-    if (existing?.readyState === WebSocket.OPEN) return
+    const { ws, _userId, _reconnectTimer } = get()
+    if (ws && _userId === userId && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      return
+    }
 
-    const ws = createWebSocket(userId)
-    let reconnectTimer = null
+    if (_reconnectTimer) {
+      clearTimeout(_reconnectTimer)
+    }
 
-    ws.onopen = () => {
-      set({ ws, connected: true, reconnecting: false })
-      // Announce presence
-      try { ws.send(JSON.stringify({ type: "presence", status: "online" })) } catch(e) {}
-      // Load unread chat count
+    const socket = createWebSocket(userId)
+
+    socket.onopen = () => {
+      set({
+        ws: socket,
+        connected: true,
+        reconnecting: false,
+        _manualDisconnect: false,
+        _userId: userId,
+        _reconnectTimer: null,
+      })
+
+      try {
+        socket.send(JSON.stringify({ type: 'presence', status: 'online' }))
+      } catch {}
+
       chatAPI.getUnreadCount()
-        .then(r => set({ unreadChats: r.unread_count }))
+        .then((result) => set({ unreadChats: result.unread_count || 0 }))
         .catch(() => {})
     }
 
-    ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data)
         get()._handleMessage(msg)
       } catch {
-        // Ignore malformed
+        // Ignore malformed payloads.
       }
     }
 
-    ws.onclose = () => {
-      set({ connected: false })
-      // Auto-reconnect after 3s
-      reconnectTimer = setTimeout(() => {
-        if (get().ws) {
+    socket.onclose = () => {
+      const state = get()
+      const shouldReconnect = !state._manualDisconnect && state._userId === userId
+
+      set({
+        ws: null,
+        connected: false,
+      })
+
+      if (!shouldReconnect) {
+        set({ reconnecting: false, _reconnectTimer: null })
+        return
+      }
+
+      const timerId = setTimeout(() => {
+        const latest = get()
+        if (!latest.connected && !latest._manualDisconnect && latest._userId === userId) {
           set({ reconnecting: true })
           get().connect(userId)
         }
       }, 3000)
+
+      set({ _reconnectTimer: timerId })
     }
 
-    ws.onerror = () => {
-      ws.close()
+    socket.onerror = () => {
+      socket.close()
     }
 
-    set({ ws, _reconnectTimer: reconnectTimer })
+    set({
+      ws: socket,
+      _userId: userId,
+      _manualDisconnect: false,
+      _reconnectTimer: null,
+    })
   },
 
-  // ── Disconnect ────────────────────────────────────────
   disconnect: () => {
-    const { ws } = get()
-    if (ws) {
-      ws.send(JSON.stringify({ type: 'presence', status: 'offline' }))
-      ws.close()
+    const { ws, _reconnectTimer } = get()
+
+    if (_reconnectTimer) {
+      clearTimeout(_reconnectTimer)
     }
-    set({ ws: null, connected: false })
+
+    set({
+      _manualDisconnect: true,
+      _userId: null,
+      _reconnectTimer: null,
+      reconnecting: false,
+      connected: false,
+      ws: null,
+      onlineUsers: new Set(),
+      typingUsers: {},
+      unreadChats: 0,
+    })
+
+    if (ws) {
+      try {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'presence', status: 'offline' }))
+        }
+      } catch {}
+
+      try {
+        ws.close()
+      } catch {}
+    }
   },
 
-  // ── Send ──────────────────────────────────────────────
   send: (data) => {
     const { ws } = get()
     if (ws?.readyState === WebSocket.OPEN) {
@@ -134,12 +191,10 @@ export const useWSStore = create((set, get) => ({
     }
   },
 
-  // ── Send chat message via WS ──────────────────────────
   sendChatMessage: (chatId, content) => {
     get().send({ type: 'chat', chat_id: chatId, content })
   },
 
-  // ── Typing indicator ──────────────────────────────────
   sendTyping: (chatId) => {
     get().send({ type: 'typing', chat_id: chatId })
   },
@@ -148,51 +203,51 @@ export const useWSStore = create((set, get) => ({
     get().send({ type: 'stop_typing', chat_id: chatId })
   },
 
-  // ── WebRTC signalling ──────────────────────────────────
   sendOffer: (roomId, to, offer) => {
     get().send({ type: 'webrtc_offer', room_id: roomId, to, offer })
   },
+
   sendAnswer: (roomId, to, answer) => {
     get().send({ type: 'webrtc_answer', room_id: roomId, to, answer })
   },
+
   sendIce: (roomId, to, candidate) => {
     get().send({ type: 'webrtc_ice', room_id: roomId, to, candidate })
   },
+
   sendRoomJoin: (roomId) => {
     get().send({ type: 'room_join', room_id: roomId })
   },
+
   sendRoomLeave: (roomId) => {
     get().send({ type: 'room_leave', room_id: roomId })
   },
 
-  // ── Message handlers ──────────────────────────────────
   _handleMessage: (msg) => {
     const notifStore = useNotifStore.getState()
 
     switch (msg.type) {
-
-      // New chat message
-      case 'chat': {
-        set(state => ({
-          unreadChats: state.unreadChats + 1,
-        }))
-        // Let individual chat pages handle message injection
-        // via their own listeners
+      case 'chat':
+      case 'chat_message': {
+        if (!isRoomChat(msg.chat_id)) {
+          set((state) => ({
+            unreadChats: state.unreadChats + 1,
+          }))
+        }
         get()._emit('chat_message', msg)
         break
       }
 
-      // Typing indicator
       case 'typing': {
         const { chat_id, user_id } = msg
-        set(state => {
-          const typing = { ...state.typingUsers }
-          if (!typing[chat_id]) typing[chat_id] = new Set()
-          else typing[chat_id] = new Set(typing[chat_id])
-          typing[chat_id].add(user_id)
-          return { typingUsers: typing }
+        set((state) => {
+          const typingUsers = { ...state.typingUsers }
+          const current = new Set(typingUsers[chat_id] || [])
+          current.add(user_id)
+          typingUsers[chat_id] = current
+          return { typingUsers }
         })
-        // Auto-clear after 3s
+
         setTimeout(() => get()._clearTyping(chat_id, user_id), 3000)
         break
       }
@@ -202,34 +257,26 @@ export const useWSStore = create((set, get) => ({
         break
       }
 
-      // Presence update
       case 'presence': {
         const { user_id, status } = msg
-        set(state => {
-          const online = new Set(state.onlineUsers)
-          if (status === 'online') online.add(user_id)
-          else online.delete(user_id)
-          return { onlineUsers: online }
+        set((state) => {
+          const onlineUsers = new Set(state.onlineUsers)
+          if (status === 'online') onlineUsers.add(user_id)
+          else onlineUsers.delete(user_id)
+          return { onlineUsers }
         })
         get()._emit('presence', msg)
         break
       }
 
-      // Notification
       case 'notification': {
         notifStore.push(msg.notification)
         break
       }
 
-      // WebRTC signalling — forward to room listeners
       case 'webrtc_offer':
       case 'webrtc_answer':
-      case 'webrtc_ice': {
-        get()._emit(msg.type, msg)
-        break
-      }
-
-      // Room events
+      case 'webrtc_ice':
       case 'room_join':
       case 'room_leave':
       case 'room_kick':
@@ -245,36 +292,40 @@ export const useWSStore = create((set, get) => ({
   },
 
   _clearTyping: (chatId, userId) => {
-    set(state => {
-      const typing = { ...state.typingUsers }
-      if (typing[chatId]) {
-        const set2 = new Set(typing[chatId])
-        set2.delete(userId)
-        typing[chatId] = set2
+    set((state) => {
+      const typingUsers = { ...state.typingUsers }
+      if (!typingUsers[chatId]) {
+        return { typingUsers }
       }
-      return { typingUsers: typing }
+
+      const current = new Set(typingUsers[chatId])
+      current.delete(userId)
+
+      if (current.size === 0) {
+        delete typingUsers[chatId]
+      } else {
+        typingUsers[chatId] = current
+      }
+
+      return { typingUsers }
     })
   },
 
-  // ── Event emitter (for component listeners) ───────────
-  _listeners: {},
-
   on: (event, cb) => {
-    set(state => {
+    set((state) => {
       const listeners = { ...state._listeners }
-      if (!listeners[event]) listeners[event] = []
-      listeners[event] = [...listeners[event], cb]
+      listeners[event] = [...(listeners[event] || []), cb]
       return { _listeners: listeners }
     })
-    // Return unsubscribe fn
+
     return () => get().off(event, cb)
   },
 
   off: (event, cb) => {
-    set(state => {
+    set((state) => {
       const listeners = { ...state._listeners }
       if (listeners[event]) {
-        listeners[event] = listeners[event].filter(f => f !== cb)
+        listeners[event] = listeners[event].filter((listener) => listener !== cb)
       }
       return { _listeners: listeners }
     })
@@ -282,37 +333,39 @@ export const useWSStore = create((set, get) => ({
 
   _emit: (event, data) => {
     const listeners = get()._listeners[event] || []
-    listeners.forEach(cb => {
-      try { cb(data) } catch { /* ignore listener errors */ }
+    listeners.forEach((listener) => {
+      try {
+        listener(data)
+      } catch {
+        // Ignore listener errors so one subscriber does not break others.
+      }
     })
   },
 
-  // ── Helpers ────────────────────────────────────────────
-  isOnline:    (userId) => get().onlineUsers.has(userId),
-  isTyping:    (chatId, userId) => get().typingUsers[chatId]?.has(userId) ?? false,
+  isOnline: (userId) => get().onlineUsers.has(userId),
+  isTyping: (chatId, userId) => get().typingUsers[chatId]?.has(userId) ?? false,
   whoIsTyping: (chatId) => Array.from(get().typingUsers[chatId] || []),
-
-  decrementUnread: () => set(s => ({ unreadChats: Math.max(0, s.unreadChats - 1) })),
-  setUnreadChats:  (n) => set({ unreadChats: n }),
+  decrementUnread: () => set((state) => ({ unreadChats: Math.max(0, state.unreadChats - 1) })),
+  setUnreadChats: (count) => set({ unreadChats: count }),
 }))
 
-// ── Helper ────────────────────────────────────────────────
-function _notifIcon(type) {
+function notifIcon(type) {
   const icons = {
-    like:            '❤️',
-    comment:         '💬',
-    follow:          '👤',
-    message:         '💌',
-    mention:         '📣',
-    answer:          '💡',
-    accepted:        '✅',
-    badge:           '🏆',
-    streak_milestone:'🔥',
+    like: '❤',
+    comment: '💬',
+    follow: '👤',
+    message: '💌',
+    mention: '📣',
+    answer: '💡',
+    accepted: '✅',
+    badge: '🏆',
+    streak_milestone: '🔥',
     mentor_accepted: '🎓',
-    mentor_request:  '🤝',
-    room_join:       '📚',
-    resource_download:'📥',
+    mentor_request: '🤝',
+    room_join: '📚',
+    resource_download: '📥',
   }
+
   return icons[type] || '🔔'
 }
 

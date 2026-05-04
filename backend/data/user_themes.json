@@ -1,0 +1,22 @@
+[
+  {
+    "id": "3b2a0d40c4d048c89bbf5f09ee2a5719",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "base_theme": "dark",
+    "accent_color": "orange",
+    "wallpaper_url": null,
+    "font_size": "medium",
+    "compact_mode": false,
+    "created_at": "2026-05-01T05:46:57.358205+00:00"
+  },
+  {
+    "id": "094a97c571b74c3e9236aa21daa4989e",
+    "user_id": "6b448a77efb8476d909c150b7ebdcd34",
+    "base_theme": "dark",
+    "accent_color": "rose",
+    "wallpaper_url": null,
+    "font_size": "medium",
+    "compact_mode": false,
+    "created_at": "2026-05-03T09:21:15.926682+00:00"
+  }
+]

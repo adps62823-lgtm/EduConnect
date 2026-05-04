@@ -1,0 +1,34 @@
+[
+  {
+    "id": "d3c5d877e5df4ef6b6ba3bb31db7735f",
+    "college_id": "6cf036b3f34b4c6e813d69cb3ed676f6",
+    "reviewer_id": "fdcc38284bab45689ab58d60737cf3a0",
+    "rating": 3,
+    "title": "",
+    "pros": "",
+    "cons": "",
+    "academics": 3,
+    "placements": 3,
+    "campus_life": 4,
+    "faculty": 2,
+    "course": "Btech",
+    "year": "2024",
+    "created_at": "2026-05-03T10:39:11.643160+00:00"
+  },
+  {
+    "id": "9890eed6b54c4101a318b56e6f97e0c3",
+    "college_id": "6cf036b3f34b4c6e813d69cb3ed676f6",
+    "reviewer_id": "c15c5b8893704a199739935345bdd1cd",
+    "rating": 1,
+    "title": "Good greenery",
+    "pros": "Best nariyal paani",
+    "cons": "Better paper straw instead of plastic ones",
+    "academics": 5,
+    "placements": 5,
+    "campus_life": 5,
+    "faculty": 5,
+    "course": "M.S. in sweeping and mopping",
+    "year": "2067",
+    "created_at": "2026-05-03T10:40:07.018403+00:00"
+  }
+]

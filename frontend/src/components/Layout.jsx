@@ -16,7 +16,6 @@ export default function Layout() {
   useEffect(() => {
     if (user?.id && !didConnect.current) {
       didConnect.current = true
-      // Wrap in try-catch — WebSocket can fail in Codespaces tunnels
       try { connect(user.id) } catch (e) { console.warn('WS connect failed:', e) }
       try { loadNotifs() }    catch (e) { console.warn('loadNotifs failed:', e) }
     }
@@ -40,10 +39,13 @@ export default function Layout() {
         paddingBottom: isBottom ? 'var(--navbar-height)' : 0,
         paddingTop:    isTop    ? 'var(--navbar-height)' : 0,
         paddingLeft:   isLeft   ? 'var(--sidebar-width)' : 0,
+        minHeight: '100dvh',
+        height: 'auto',
+        overflow: 'visible',
       }}
     >
       <Navbar />
-      <main className="main-content">
+      <main className="main-content" style={{ minHeight: 0 }}>
         <div className="page-scroll" id="page-scroll">
           <Outlet />
         </div>
