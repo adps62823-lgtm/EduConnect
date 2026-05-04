@@ -1,12 +1,9 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt
 python-multipart
 aiofiles
-websocketspillow
+websockets
+pillow
 python-dotenv
-pydantic
-pydantic-settings
-httpx
