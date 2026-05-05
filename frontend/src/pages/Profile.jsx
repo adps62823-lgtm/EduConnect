@@ -429,7 +429,7 @@ export default function Profile() {
           <img src={avatar} alt={profile.name} className="profile-avatar-img" />
           {isMe && (
             <>
-              <Pencil size={5} className="avatar-edit-btn" onClick={() => fileAvatarRef.current?.click()}>Edit</Pencil>
+              <button className="avatar-edit-btn" onClick={() => fileAvatarRef.current?.click()}><Pencil size={15}/></button>
               <input ref={fileAvatarRef} type="file" accept="image/*" hidden onChange={handleAvatarUpload} />
             </>
           )}
