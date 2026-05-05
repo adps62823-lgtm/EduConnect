@@ -1,10 +1,13 @@
-/**
- * api.js — EduConnect API client (FINAL)
- * Auto-unwraps axios .data so every caller gets the data directly
- */
 import axios from 'axios'
 
-const api = axios.create({ baseURL: '/api', timeout: 30000 })
+const BASE = import.meta.env.VITE_API_URL
+  ? import.meta.env.VITE_API_URL + '/api'
+  : '/api'
+
+const api = axios.create({
+  baseURL: BASE,
+  timeout: 30000,
+})
 
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token')
@@ -13,7 +16,7 @@ api.interceptors.request.use((config) => {
 })
 
 api.interceptors.response.use(
-  (res) => res.data,   // ← auto-unwrap: callers get data directly, not res.data
+  (res) => res.data,
   (err) => {
     if (err.response?.status === 401) {
       sessionStorage.removeItem('token')
