@@ -5,7 +5,7 @@ const BASE = import.meta.env.VITE_API_URL
   : '/api'
 
 const api = axios.create({
-  baseURL: BASE,
+  baseURL: 'https://educonnect-edu.up.railway.app/api',
   timeout: 30000,
 })
 
