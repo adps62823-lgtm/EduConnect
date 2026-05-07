@@ -196,6 +196,10 @@ export function applyThemeToDOM(settings = {}) {
   root.style.setProperty('--primary-hover', accent.hover)
   root.style.setProperty('--primary-light', accent.primary + '20')
   root.style.setProperty('--primary-glow',  accent.primary + '40')
+  root.style.setProperty('--accent',        accent.primary)
+  root.style.setProperty('--accent-hover',  accent.hover)
+  root.style.setProperty('--accent-light',  accent.primary + '20')
+  root.style.setProperty('--accent-glow',   accent.primary + '40')
 
   // 3. Custom override color (from backend)
   if (merged.primary_color && merged.primary_color !== accent.primary) {
@@ -282,7 +286,7 @@ export function serializeForAPI(settings) {
   return {
     theme:               settings.theme,
     primary_color:       settings.primary_color,
-    accent_color:        settings.accent_color,
+    accent_color:        settings.primary_color || settings.accent_color || settings.accentId,
     background_color:    settings.background_color || null,
     background_wallpaper: settings.background_wallpaper || null,
     navbar_position:     settings.navbar_position,
@@ -298,13 +302,15 @@ export function serializeForAPI(settings) {
 export function deserializeFromAPI(apiTheme) {
   if (!apiTheme) return { ...DEFAULT_THEME }
 
-  // Try to find accent id from primary_color
+  // Try to find accent id from primary_color or accent_color
   const matchedAccent = getAccentByColor(apiTheme.primary_color)
+    || getAccentById(apiTheme.primary_color)
+    || getAccentById(apiTheme.accent_color)
 
   return {
     theme:               apiTheme.theme || 'dark',
     accentId:            matchedAccent?.id || 'indigo',
-    primary_color:       apiTheme.primary_color || DEFAULT_THEME.primary_color,
+    primary_color:       apiTheme.primary_color || matchedAccent?.primary || DEFAULT_THEME.primary_color,
     background_color:    apiTheme.background_color || null,
     background_wallpaper: apiTheme.background_wallpaper || null,
     navbar_position:     apiTheme.navbar_position || 'bottom',

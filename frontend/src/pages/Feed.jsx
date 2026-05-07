@@ -56,6 +56,48 @@ function StoriesRow({ onAddStory }) {
     setViewer(v => v.index > 0 ? { ...v, index: v.index - 1 } : v)
   }
 
+  useEffect(() => {
+    if (!viewer) return
+
+    const activeStory = viewer.stories?.[viewer.index]
+    if (!activeStory?.id || activeStory.is_viewed || viewer.user?.id === currentUser?.id) {
+      return
+    }
+
+    let cancelled = false
+
+    feedAPI.viewStory(activeStory.id)
+      .then(() => {
+        if (cancelled) return
+
+        setStories(prev => prev.map(group => {
+          const nextStories = (group.stories || []).map(story =>
+            story.id === activeStory.id ? { ...story, is_viewed: true } : story
+          )
+          return {
+            ...group,
+            stories: nextStories,
+            has_unviewed: nextStories.some(story => !story.is_viewed),
+          }
+        }))
+
+        setViewer(prev => {
+          if (!prev) return prev
+          return {
+            ...prev,
+            stories: prev.stories.map(story =>
+              story.id === activeStory.id ? { ...story, is_viewed: true } : story
+            ),
+          }
+        })
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [viewer, currentUser?.id])
+
   return (
     <>
       <div className="stories-row" style={{ paddingTop: 12 }}>
@@ -232,24 +274,42 @@ function CreatePostModal({ open, onClose, onCreated }) {
   const imageRef = useRef()
   const videoRef = useRef()
 
+  function revokeUrls(urls) {
+    urls.forEach(url => URL.revokeObjectURL(url))
+  }
+
   function reset() {
+    revokeUrls(imagePreviews)
+    revokeUrls(videoPreviews)
     setContent(''); setImages([]); setVideos([]); setImagePreviews([]); setVideoPreviews([])
     setSubject(''); setExamTag(''); setIsAnon(false)
+    if (imageRef.current) imageRef.current.value = ''
+    if (videoRef.current) videoRef.current.value = ''
   }
 
   function handleClose() { reset(); onClose() }
 
   function handleImages(files) {
-    const arr = Array.from(files).slice(0, 4 - videos.length)
-    setImages(arr)
-    setImagePreviews(arr.map(f => URL.createObjectURL(f)))
+    const nextFiles = Array.from(files).slice(0, Math.max(0, 4 - videos.length))
+    revokeUrls(imagePreviews)
+    setImages(nextFiles)
+    setImagePreviews(nextFiles.map(file => URL.createObjectURL(file)))
   }
 
   function handleVideos(files) {
-    const arr = Array.from(files).slice(0, 4 - images.length)
-    setVideos(arr)
-    setVideoPreviews(arr.map(f => URL.createObjectURL(f)))
+    const nextFiles = Array.from(files).slice(0, Math.max(0, 4 - images.length))
+    revokeUrls(videoPreviews)
+    setVideos(nextFiles)
+    setVideoPreviews(nextFiles.map(file => URL.createObjectURL(file)))
   }
+
+  useEffect(() => {
+    if (!open) return
+    return () => {
+      revokeUrls(imagePreviews)
+      revokeUrls(videoPreviews)
+    }
+  }, [open, imagePreviews, videoPreviews])
 
   async function handleSubmit() {
     if (!content.trim() && images.length === 0 && videos.length === 0) {
@@ -261,7 +321,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
       fd.append('content', content)
       fd.append("is_anonymous", isAnon ? "true" : "false")
       if (subject)  fd.append('subject', subject)
-      if (examTag)  fd.append('exam_target', examTag)
+      if (examTag)  fd.append('exam_tag', examTag)
       images.forEach(f => fd.append('images', f))
       videos.forEach(f => fd.append('videos', f))
 
@@ -324,6 +384,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
                 <img src={src} alt="" className="post-image" />
                 <button
                   onClick={() => {
+                    URL.revokeObjectURL(src)
                     setImages(imgs => imgs.filter((_, j) => j !== i))
                     setImagePreviews(ps => ps.filter((_, j) => j !== i))
                   }}
@@ -343,6 +404,7 @@ function CreatePostModal({ open, onClose, onCreated }) {
                 <video src={src} className="post-image" controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <button
                   onClick={() => {
+                    URL.revokeObjectURL(src)
                     setVideos(vids => vids.filter((_, j) => j !== i))
                     setVideoPreviews(ps => ps.filter((_, j) => j !== i))
                   }}
@@ -437,8 +499,6 @@ function PostCard({ post: initialPost, onDelete }) {
   const [loadingComments, setLoadingComments] = useState(false)
   const [submitting, setSubmitting]     = useState(false)
   const [showMenu, setShowMenu]         = useState(false)
-  const [imgIndex, setImgIndex]         = useState(0)
-
   const isLiked = post.is_liked
   const isMe    = post.author?.id === currentUser?.id
 
@@ -524,8 +584,8 @@ function PostCard({ post: initialPost, onDelete }) {
           </div>
         </div>
 
-        {(post.exam_target || post.subject) && (
-          <Tag variant="">{post.exam_target || post.subject}</Tag>
+        {(post.exam_tag || post.subject) && (
+          <Tag variant="">{post.exam_tag || post.subject}</Tag>
         )}
 
         <div style={{ position: 'relative' }}>
@@ -560,17 +620,19 @@ function PostCard({ post: initialPost, onDelete }) {
                     <Trash2 size={14} /> Delete post
                   </button>
                 )}
-                <button
-                  onClick={() => { setShowMenu(false); navigate(`/profile/${post.author?.username}`) }}
-                  style={{
-                    width: '100%', padding: '10px 14px',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: 'var(--text)', fontSize: '0.85rem',
-                  }}
-                >
-                  <Send size={14} /> View profile
-                </button>
+                {!post.is_anonymous && post.author?.username && (
+                  <button
+                    onClick={() => { setShowMenu(false); navigate(`/profile/${post.author.username}`) }}
+                    style={{
+                      width: '100%', padding: '10px 14px',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--text)', fontSize: '0.85rem',
+                    }}
+                  >
+                    <Send size={14} /> View profile
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -591,13 +653,11 @@ function PostCard({ post: initialPost, onDelete }) {
             {media.slice(0, 4).map((item, i) => (
               item.type === 'video' ? (
                 <video key={i} src={item.url} className="post-image" controls
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setImgIndex(i)}
+                  style={{ cursor: 'default' }}
                 />
               ) : (
                 <img key={i} src={item.url} alt="" className="post-image"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setImgIndex(i)}
+                  style={{ cursor: 'default' }}
                 />
               )
             ))}
@@ -805,7 +865,7 @@ export default function Feed() {
         }
       />
 
-      <div className="page-scroll">
+      <div>
         {/* Stories */}
         <StoriesRow onAddStory={() => setStoryOpen(true)} />
 
@@ -903,6 +963,19 @@ function AddStoryForm({ onClose, onCreated }) {
   const [loading, setLoading]   = useState(false)
   const fileRef = useRef()
 
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview)
+    }
+  }, [preview])
+
+  function clearSelectedFile() {
+    if (preview) URL.revokeObjectURL(preview)
+    setFile(null)
+    setPreview(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
   async function handleSubmit() {
     if (!file) { toast.error('Pick an image or video.'); return }
     setLoading(true)
@@ -930,7 +1003,7 @@ function AddStoryForm({ onClose, onCreated }) {
             <img src={preview} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }} />
           )}
           <button
-            onClick={() => { setFile(null); setPreview(null) }}
+            onClick={clearSelectedFile}
             style={{
               position: 'absolute', top: 8, right: 8,
               background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%',
@@ -975,13 +1048,16 @@ function AddStoryForm({ onClose, onCreated }) {
           onClick={() => fileRef.current?.click()}
           style={{ flex: 1 }}
         >
-          <Camera size={16} /> Add Photo
+          <Camera size={16} /> Add Media
         </button>
         <input
           ref={fileRef} type="file" accept="image/*,video/*" style={{ display: 'none' }}
           onChange={e => {
             const f = e.target.files[0]
-            if (f) { setFile(f); setPreview(URL.createObjectURL(f)) }
+            if (!f) return
+            if (preview) URL.revokeObjectURL(preview)
+            setFile(f)
+            setPreview(URL.createObjectURL(f))
           }}
         />
         <Button variant="primary" loading={loading} onClick={handleSubmit} style={{ flex: 1 }}>

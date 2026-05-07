@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { Download, Heart, Trash2 } from "lucide-react";
 import { resourceAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui";
@@ -19,7 +20,7 @@ const fmt_size = (bytes) => {
 };
 
 // ── Resource Card ─────────────────────────────────────────
-function ResourceCard({ resource, onLike, onDownload, currentUserId }) {
+function ResourceCard({ resource, onLike, onDownload, currentUserId, onDelete }) {
   const [liked,      setLiked]      = useState(resource.is_liked);
   const [likeCount,  setLikeCount]  = useState(resource.likes_count);
   const [downloading,setDownloading]= useState(false);
@@ -80,18 +81,25 @@ function ResourceCard({ resource, onLike, onDownload, currentUserId }) {
           <span className="points-badge">🪙 {resource.points_cost} pts</span>
         )}
       </div>
-
       <div className="resource-actions">
         <button className={`action-btn ${liked?"liked":""}`} onClick={handleLike}>
-          {liked ? "❤️" : "🤍"} {likeCount}
+          <Heart size={16} fill={liked ? "currentColor" : "none"} />
+          <span>{likeCount}</span>
         </button>
-        <span className="download-count">⬇️ {resource.downloads || 0}</span>
+        <span className="download-count">
+          <Download size={14} />
+          <span>{resource.downloads || 0}</span>
+        </span>
         <button className="btn-download" onClick={handleDownload} disabled={downloading}>
-          {downloading ? "…" : "⬇ Download"}
+          <Download size={15} />
+          <span>{downloading ? "Downloading" : "Download"}</span>
         </button>
         {resource.is_mine && (
-          <button className="btn-delete-res" onClick={() => onDelete?.(resource.id)}>🗑️</button>
+          <button className="btn-delete-res" onClick={() => onDelete?.(resource.id)}>
+            <Trash2 size={14} />
+          </button>
         )}
+      </div>
       </div>
     </div>
   );
@@ -532,19 +540,17 @@ export default function Resources() {
         .points-badge { margin-left:auto;background:color-mix(in srgb,#f59e0b 15%,transparent);color:#92400e;font-size:.76rem;padding:2px 8px;border-radius:20px;font-weight:600; }
 
         .resource-actions { display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--border);margin-top:auto; }
-        .action-btn { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.88rem;padding:4px 8px;border-radius:8px; }
+        .action-btn { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.88rem;padding:4px 8px;border-radius:8px;display:inline-flex;align-items:center;gap:6px; }
         .action-btn:hover { background:var(--bg-elevated); }
         .action-btn.liked { color:#e11d48; }
-        .download-count { font-size:.82rem;color:var(--text-muted); }
+        .download-count { font-size:.82rem;color:var(--text-muted);display:inline-flex;align-items:center;gap:6px; }
         .btn-download {
-          margin-left:auto;background:var(--accent);color:#fff;border:none;
+          margin-left:auto;background:var(--accent);color:#fff;border:none;display:inline-flex;align-items:center;gap:6px;
           padding:6px 16px;border-radius:20px;cursor:pointer;font-size:.85rem;font-weight:600;
         }
         .btn-download:disabled { opacity:.6;cursor:not-allowed; }
-        .btn-delete-res { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.9rem;padding:4px 8px;border-radius:8px; }
+        .btn-delete-res { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.9rem;padding:4px 8px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center; }
         .btn-delete-res:hover { color:#e11d48; }
-
-        /* Modal */
         .modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px; }
         .modal-box { background:var(--bg-card);border-radius:16px;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden; }
         .modal-header { display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0; }

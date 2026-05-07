@@ -2,21 +2,21 @@
  * HelpForum.jsx — Stack Overflow-clone question list
  * Search · Filter by subject/exam/status · Sort · Pagination
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Search, Plus, ChevronUp, MessageSquare,
-  Eye, CheckCircle, Clock, Filter, X,
+  Eye, Clock, Filter, X,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { helpAPI } from '@/api'
-import useAuthStore from '@/store/authStore'
 import Avatar from '@/components/Avatar'
 import {
   Button, EmptyState, PageHeader, CardSkeleton,
-  Tag, Spinner,
+  Tag,
 } from '@/components/ui'
+import toast from 'react-hot-toast'
 
 const SUBJECTS  = ['Mathematics','Physics','Chemistry','Biology','History','Geography','Economics','English','Computer Science','Other']
 const EXAM_TAGS = ['JEE','NEET','UPSC','CAT','GATE','CA','SAT','GCSE','IB']
@@ -24,11 +24,14 @@ const SORTS     = [
   { id: 'newest',     label: '🕐 Newest'    },
   { id: 'votes',      label: '🔥 Most voted' },
   { id: 'unanswered', label: '❓ Unanswered' },
-  { id: 'views',      label: '👁 Most viewed' },
 ]
 
 function QuestionCard({ q }) {
   const navigate = useNavigate()
+  const votes = q.vote_count ?? q.votes ?? 0
+  const views = q.views ?? 0
+  const answersCount = q.answers_count ?? 0
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -45,7 +48,7 @@ function QuestionCard({ q }) {
         }}>
           <ChevronUp size={14} style={{ color: 'var(--text-3)' }} />
           <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text)' }}>
-            {q.votes ?? 0}
+            {votes}
           </span>
           <span style={{ fontSize: '0.62rem', color: 'var(--text-3)' }}>votes</span>
         </div>
@@ -61,7 +64,7 @@ function QuestionCard({ q }) {
             fontWeight: 700, fontSize: '0.9rem',
             color: q.is_answered ? 'var(--green)' : 'var(--text)',
           }}>
-            {q.answers_count ?? 0}
+            {answersCount}
           </span>
           <span style={{
             fontSize: '0.62rem',
@@ -103,7 +106,7 @@ function QuestionCard({ q }) {
           fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 2, flexWrap: 'wrap',
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Eye size={11} /> {q.views ?? 0} views
+            <Eye size={11} /> {views} views
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <Clock size={11} />
@@ -124,7 +127,6 @@ function QuestionCard({ q }) {
 
 export default function HelpForum() {
   const navigate    = useNavigate()
-  const currentUser = useAuthStore(s => s.user)
 
   const [questions, setQuestions] = useState([])
   const [total, setTotal]         = useState(0)
@@ -140,7 +142,7 @@ export default function HelpForum() {
 
   const LIMIT = 15
 
-  async function load(f = filters, p = 1) {
+  const load = useCallback(async (f, p = 1) => {
     setLoading(true)
     try {
       const res = await helpAPI.getQuestions({
@@ -149,11 +151,15 @@ export default function HelpForum() {
       setQuestions(res?.questions || [])
       setTotal(res?.total || 0)
       setPage(p)
-    } catch {}
+    } catch {
+      toast.error('Could not load questions.')
+      setQuestions([])
+      setTotal(0)
+    }
     finally { setLoading(false) }
-  }
+  }, [])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(filters, 1) }, [load])
 
   function applyFilters() {
     setFilters(draft)
@@ -187,7 +193,7 @@ export default function HelpForum() {
         }
       />
 
-      <div className="page-scroll">
+      <div>
         <div className="page-container" style={{ paddingTop: 12 }}>
 
           {/* Search + filter bar */}
@@ -209,7 +215,12 @@ export default function HelpForum() {
                 }}
               />
               {draft.q && (
-                <button onClick={() => { setDraft(d => ({ ...d, q: '' })); load({ ...draft, q: '' }, 1) }}
+                <button onClick={() => {
+                  const next = { ...draft, q: '' }
+                  setDraft(next)
+                  setFilters(next)
+                  load(next, 1)
+                }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', display: 'flex' }}>
                   <X size={14} />
                 </button>
@@ -263,7 +274,6 @@ export default function HelpForum() {
                   <option value="">Any status</option>
                   <option value="open">Open</option>
                   <option value="answered">Answered</option>
-                  <option value="closed">Closed</option>
                 </select>
               </div>
 
@@ -338,7 +348,7 @@ export default function HelpForum() {
               <Button variant="ghost" size="sm"
                 disabled={page === 1}
                 onClick={() => load(filters, page - 1)}>
-                ← Prev
+                Prev
               </Button>
               <span style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--text-3)' }}>
                 Page {page} of {Math.ceil(total / LIMIT)}
@@ -346,7 +356,7 @@ export default function HelpForum() {
               <Button variant="ghost" size="sm"
                 disabled={page >= Math.ceil(total / LIMIT)}
                 onClick={() => load(filters, page + 1)}>
-                Next →
+                Next
               </Button>
             </div>
           )}

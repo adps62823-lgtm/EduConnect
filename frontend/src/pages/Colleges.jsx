@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { ThumbsDown, ThumbsUp, Trash2 } from "lucide-react";
 import { collegeAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui";
@@ -540,8 +541,8 @@ function CollegeDetail({ college, currentUserId, onBack, onReviewSaved }) {
             </div>
             {rev.title && <p className="rev-title">"{rev.title}"</p>}
             <div className="rev-body">
-              {rev.pros && <div className="rev-pros"><span>👍</span> {rev.pros}</div>}
-              {rev.cons && <div className="rev-cons"><span>👎</span> {rev.cons}</div>}
+              {rev.pros && <div className="rev-pros"><ThumbsUp size={15} /> {rev.pros}</div>}
+              {rev.cons && <div className="rev-cons"><ThumbsDown size={15} /> {rev.cons}</div>}
             </div>
             {(rev.academics||rev.placements||rev.campus_life||rev.faculty) && (
               <div className="rev-sub-ratings">
@@ -558,7 +559,7 @@ function CollegeDetail({ college, currentUserId, onBack, onReviewSaved }) {
                   await collegeAPI.deleteReview(college.id, rev.id);
                   setData(d => ({ ...d, reviews: d.reviews.filter(r => r.id !== rev.id),
                                           reviews_count: d.reviews_count - 1 }));
-                }}>🗑️ Delete</button>
+                }}><Trash2 size={14} /> Delete</button>
             )}
           </div>
         ))}
@@ -790,11 +791,11 @@ export default function Colleges() {
         .rev-date { font-size:.76rem;color:var(--text-muted); }
         .rev-title { margin:0;font-size:.95rem;font-style:italic;color:var(--text-secondary); }
         .rev-body { display:flex;flex-direction:column;gap:6px; }
-        .rev-pros,.rev-cons { font-size:.88rem;line-height:1.5;color:var(--text-secondary); }
+        .rev-pros,.rev-cons { display:flex;align-items:flex-start;gap:8px;font-size:.84rem;line-height:1.45; }
         .rev-pros span,.rev-cons span { margin-right:6px; }
         .rev-sub-ratings { display:flex;flex-wrap:wrap;gap:10px; }
         .rev-sub-ratings span { font-size:.8rem;color:var(--text-muted);background:var(--bg-elevated);padding:3px 9px;border-radius:20px; }
-        .btn-delete-review { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.82rem;align-self:flex-start;padding:3px 8px;border-radius:6px; }
+        .btn-delete-review { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:.82rem;align-self:flex-start;padding:3px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:6px; }
         .btn-delete-review:hover { color:#e11d48; }
         .empty-reviews { display:flex;flex-direction:column;align-items:center;padding:40px;gap:12px;color:var(--text-muted); }
         .empty-reviews span { font-size:2.5rem; }

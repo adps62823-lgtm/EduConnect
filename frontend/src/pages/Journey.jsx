@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { Trash2 } from "lucide-react";
 import { feedAPI } from "../api";
 import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui";
@@ -107,9 +108,7 @@ function EntryCard({ entry, isMe, onDelete }) {
               { day:"numeric", month:"long", year:"numeric" })}
           </div>
           {isMe && (
-            <button className="btn-delete-entry" onClick={() => onDelete?.(entry.id)}>
-              🗑️ Delete
-            </button>
+            <button className="btn-delete-entry" onClick={() => onDelete?.(entry.id)}><Trash2 size={14} /> Delete</button>
           )}
         </div>
       )}
@@ -535,7 +534,7 @@ export default function Journey() {
         .topic-chip.removable span { cursor:pointer;opacity:.7; }
         .topic-chip.removable span:hover { opacity:1; }
         .jcard-date { font-size:.78rem;color:var(--text-muted); }
-        .btn-delete-entry { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.82rem;padding:4px 8px;border-radius:6px;align-self:flex-start; }
+        .btn-delete-entry { background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.82rem;padding:4px 8px;border-radius:6px;align-self:flex-start;display:inline-flex;align-items:center;gap:6px; }
         .btn-delete-entry:hover { color:#e11d48; }
 
         /* Modal */

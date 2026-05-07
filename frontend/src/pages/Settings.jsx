@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import useThemeStore from "../store/themeStore";
 import { profileAPI } from "../api";
+import { ACCENT_COLORS, FONT_SIZES } from "../styles/themes";
 
-const THEMES     = ["dark","light","dim","midnight"];
-const ACCENTS    = ["blue","violet","green","rose","orange","cyan","yellow","pink"];
-const FONT_SIZES = ["small","medium","large"];
-
-const ACCENT_HEX = {
-  blue:"#3b82f6", violet:"#7c3aed", green:"#16a34a",
-  rose:"#e11d48", orange:"#f97316", cyan:"#06b6d4",
-  yellow:"#f59e0b", pink:"#ec4899",
-};
+const THEMES = [
+  { id: "dark", label: "Dark" },
+  { id: "light", label: "Light" },
+  { id: "midnight", label: "Midnight" },
+  { id: "amoled", label: "Amoled" },
+];
 
 function Section({ title, children }) {
   return (
@@ -36,39 +35,35 @@ function Row({ label, desc, children }) {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, logout, updateUser } = useAuthStore();
+  const { user, logout } = useAuthStore();
+  const {
+    theme,
+    accentId,
+    primary_color,
+    font_size,
+    syncing,
+    loadFromBackend,
+    setTheme,
+    setAccent,
+    setFontSize,
+  } = useThemeStore();
 
-  const [theme,    setThemeLocal]  = useState(
-    document.documentElement.getAttribute("data-theme") || "dark"
-  );
-  const [accent,   setAccentLocal] = useState(
-    getComputedStyle(document.documentElement).getPropertyValue("--accent-name")?.trim() || "blue"
-  );
-  const [fontSize, setFontSize]    = useState("medium");
-  const [saving,   setSaving]      = useState(false);
-  const [saved,    setSaved]       = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const applyTheme = (t) => {
-    document.documentElement.setAttribute("data-theme", t);
-    setThemeLocal(t);
-  };
-
-  const applyAccent = (a) => {
-    document.documentElement.style.setProperty("--accent", ACCENT_HEX[a]);
-    document.documentElement.style.setProperty("--accent-name", a);
-    setAccentLocal(a);
-  };
-
-  const applyFontSize = (f) => {
-    const sizes = { small: "14px", medium: "16px", large: "18px" };
-    document.documentElement.style.setProperty("--base-font-size", sizes[f]);
-    setFontSize(f);
-  };
+  useEffect(() => {
+    loadFromBackend().catch(() => null);
+  }, [loadFromBackend]);
 
   const saveTheme = async () => {
     setSaving(true);
     try {
-      await profileAPI.updateTheme({ base_theme: theme, accent_color: accent, font_size: fontSize });
+      await profileAPI.updateTheme({
+        theme,
+        primary_color,
+        accent_color: accentId || primary_color,
+        font_size,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {}
@@ -111,39 +106,46 @@ export default function Settings() {
       <Section title="🎨 Appearance">
         <Row label="Theme" desc="Choose your base colour scheme">
           <div className="theme-picker">
-            {THEMES.map(t => (
-              <button key={t} className={`theme-btn ${theme === t ? "active" : ""}`}
-                      onClick={() => applyTheme(t)}>
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+            {THEMES.map((item) => (
+              <button
+                key={item.id}
+                className={`theme-btn ${theme === item.id ? "active" : ""}`}
+                onClick={() => setTheme(item.id)}
+              >
+                {item.label}
               </button>
             ))}
           </div>
         </Row>
         <Row label="Accent Colour" desc="Highlight colour used throughout the app">
           <div className="accent-picker">
-            {ACCENTS.map(a => (
-              <button key={a}
-                className={`accent-dot ${accent === a ? "active" : ""}`}
-                style={{ background: ACCENT_HEX[a] }}
-                onClick={() => applyAccent(a)}
-                title={a}
+            {ACCENT_COLORS.map((accent) => (
+              <button
+                key={accent.id}
+                className={`accent-dot ${accentId === accent.id ? "active" : ""}`}
+                style={{ background: accent.primary }}
+                onClick={() => setAccent(accent.id)}
+                title={accent.name}
               />
             ))}
           </div>
         </Row>
         <Row label="Font Size" desc="Adjust text size across the app">
           <div className="fontsize-picker">
-            {FONT_SIZES.map(f => (
-              <button key={f} className={`fontsize-btn ${fontSize === f ? "active" : ""}`}
-                      onClick={() => applyFontSize(f)}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+            {FONT_SIZES.map((item) => (
+              <button
+                key={item.id}
+                className={`fontsize-btn ${font_size === item.id ? "active" : ""}`}
+                onClick={() => setFontSize(item.id)}
+              >
+                {item.label}
               </button>
             ))}
           </div>
         </Row>
         <Row label="">
-          <button className="btn-save" onClick={saveTheme} disabled={saving}>
-            {saved ? "✓ Saved!" : saving ? "Saving…" : "Save Appearance"}
+          <button className="btn-save" onClick={saveTheme} disabled={saving || syncing}>
+            {saved ? "✓ Saved!" : saving || syncing ? "Saving…" : "Save Appearance"}
           </button>
         </Row>
       </Section>

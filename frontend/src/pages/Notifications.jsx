@@ -1,125 +1,229 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { authAPI } from "../api";
-import { useNotifStore } from "../store/notifStore";
+import { useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, BookmarkCheck, GraduationCap, Heart, MessageCircle, UserPlus } from 'lucide-react'
+import { EmptyState, PageHeader, Spinner } from '@/components/ui'
+import { useNotifStore } from '@/store/notifStore'
 
-const TYPE_ICON = {
-  like:           "❤️",
-  comment:        "💬",
-  follow:         "👤",
-  answer:         "💡",
-  accepted:       "✅",
-  mentor_request: "🎓",
-  badge:          "🏅",
-};
+const TYPE_META = {
+  like: { icon: Heart, color: 'var(--red)' },
+  comment: { icon: MessageCircle, color: 'var(--primary)' },
+  follow: { icon: UserPlus, color: 'var(--accent)' },
+  answer: { icon: MessageCircle, color: 'var(--green)' },
+  accepted: { icon: BookmarkCheck, color: 'var(--green)' },
+  mentor_request: { icon: GraduationCap, color: 'var(--accent)' },
+  badge: { icon: Bell, color: 'var(--primary)' },
+}
 
-const ago = (iso) => {
-  const diff = (Date.now() - new Date(iso)) / 1000;
-  if (diff < 60)    return "just now";
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-};
+function ago(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
+}
 
-export default function Notifications() {
-  const navigate = useNavigate();
-  const { unread, clearUnread } = useNotifStore();
-  const [notifs,   setNotifs]   = useState([]);
-  const [loading,  setLoading]  = useState(true);
+function getGroupLabel(iso) {
+  const date = new Date(iso)
+  const today = new Date()
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today'
+  }
 
-  useEffect(() => {
-    authAPI.getNotifications()
-      .then(r => setNotifs(Array.isArray(r) ? r : (r?.notifications || [])))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday'
+  }
 
-    // Mark all read
-    authAPI.markAllRead().catch(() => {});
-    clearUnread();
-  }, []);
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })
+}
 
-  const grouped = notifs.reduce((acc, n) => {
-    const d   = new Date(n.created_at);
-    const now = new Date();
-    let label;
-    if (d.toDateString() === now.toDateString()) label = "Today";
-    else {
-      const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-      label = d.toDateString() === yesterday.toDateString() ? "Yesterday"
-        : d.toLocaleDateString("en-IN", { day: "numeric", month: "long" });
-    }
-    if (!acc[label]) acc[label] = [];
-    acc[label].push(n);
-    return acc;
-  }, {});
+function getNotificationHref(notification) {
+  if (['answer', 'accepted'].includes(notification.type) && notification.ref_id) {
+    return `/help/${notification.ref_id}`
+  }
+  if (['like', 'comment'].includes(notification.type)) {
+    return '/feed'
+  }
+  if (notification.type === 'mentor_request') {
+    return '/mentor'
+  }
+  if (notification.type === 'follow') {
+    return '/profile'
+  }
+  return null
+}
+
+function NotificationRow({ notification, onOpen }) {
+  const meta = TYPE_META[notification.type] || { icon: Bell, color: 'var(--primary)' }
+  const Icon = meta.icon
+  const href = getNotificationHref(notification)
 
   return (
-    <div className="notifs-page">
-      <div className="notifs-header">
-        <h1>🔔 Notifications</h1>
-        {notifs.length > 0 && (
-          <span className="notif-count">{notifs.length} total</span>
+    <button
+      type="button"
+      onClick={() => href && onOpen(href)}
+      aria-disabled={!href}
+      style={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 12,
+        padding: '14px 14px',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid transparent',
+        background: notification.is_read
+          ? 'var(--surface)'
+          : 'linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, transparent), transparent)',
+        cursor: href ? 'pointer' : 'default',
+        textAlign: 'left',
+        transition: 'transform 0.15s ease, border-color 0.15s ease, background 0.15s ease',
+      }}
+      className="notification-row"
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border)',
+          color: meta.color,
+        }}
+      >
+        <Icon size={18} />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+          <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: 'var(--text)' }}>
+            {notification.title || 'Notification'}
+          </p>
+          {!notification.is_read && (
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: 'var(--primary)',
+                flexShrink: 0,
+              }}
+            />
+          )}
+        </div>
+        <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-2)', lineHeight: 1.5 }}>
+          {notification.message}
+        </p>
+      </div>
+
+      <span style={{ fontSize: '0.74rem', color: 'var(--text-3)', flexShrink: 0, marginTop: 2 }}>
+        {ago(notification.created_at)}
+      </span>
+    </button>
+  )
+}
+
+export default function Notifications() {
+  const navigate = useNavigate()
+  const notifications = useNotifStore((state) => state.notifications)
+  const loading = useNotifStore((state) => state.loading)
+  const load = useNotifStore((state) => state.load)
+  const markAllRead = useNotifStore((state) => state.markAllRead)
+
+  useEffect(() => {
+    let active = true
+
+    async function init() {
+      await load()
+      if (!active) return
+      await markAllRead()
+    }
+
+    init()
+    return () => {
+      active = false
+    }
+  }, [load, markAllRead])
+
+  const grouped = useMemo(() => {
+    return notifications.reduce((acc, notification) => {
+      const label = getGroupLabel(notification.created_at)
+      if (!acc[label]) acc[label] = []
+      acc[label].push(notification)
+      return acc
+    }, {})
+  }, [notifications])
+
+  const unreadCount = useMemo(
+    () => notifications.filter((notification) => !notification.is_read).length,
+    [notifications]
+  )
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <PageHeader
+        title="Notifications"
+        subtitle={
+          notifications.length > 0
+            ? `${notifications.length} updates${unreadCount > 0 ? ` - ${unreadCount} unread` : ''}`
+            : 'Stay on top of likes, replies, follows, and mentor activity'
+        }
+      />
+
+      <div className="page-container" style={{ paddingTop: 2, paddingBottom: 20 }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+            <Spinner size={34} />
+          </div>
+        ) : notifications.length === 0 ? (
+          <EmptyState
+            icon="!"
+            title="All caught up"
+            desc="New likes, comments, follows, and mentor activity will show up here."
+          />
+        ) : (
+          <div style={{ display: 'grid', gap: 16 }}>
+            {Object.entries(grouped).map(([label, items]) => (
+              <section key={label} style={{ display: 'grid', gap: 8 }}>
+                <div
+                  style={{
+                    fontSize: '0.76rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-3)',
+                    paddingInline: 4,
+                  }}
+                >
+                  {label}
+                </div>
+
+                <div style={{ display: 'grid', gap: 8 }}>
+                  {items.map((notification) => (
+                    <NotificationRow
+                      key={notification.id}
+                      notification={notification}
+                      onOpen={(href) => navigate(href)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
         )}
       </div>
 
-      {loading ? (
-        <div className="notifs-list">
-          {[1,2,3,4,5].map(i => <div key={i} className="notif-skeleton" />)}
-        </div>
-      ) : notifs.length === 0 ? (
-        <div className="empty-state">
-          <span>🔔</span>
-          <p>You're all caught up! No new notifications.</p>
-        </div>
-      ) : (
-        <div className="notifs-list">
-          {Object.entries(grouped).map(([label, items]) => (
-            <div key={label}>
-              <div className="notif-group-label">{label}</div>
-              {items.map(n => (
-                <div key={n.id} className={`notif-row ${n.is_read ? "" : "unread"}`}>
-                  <span className="notif-icon">{TYPE_ICON[n.type] || "🔔"}</span>
-                  <div className="notif-body">
-                    <p className="notif-title">{n.title}</p>
-                    <p className="notif-msg">{n.message}</p>
-                  </div>
-                  <span className="notif-time">{ago(n.created_at)}</span>
-                  {!n.is_read && <span className="unread-dot" />}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
       <style>{`
-        .notifs-page { max-width:680px;margin:0 auto;padding-bottom:60px; }
-        .notifs-header { display:flex;align-items:center;gap:12px;padding:28px 16px 20px; }
-        .notifs-header h1 { margin:0;font-size:1.6rem;font-weight:800; }
-        .notif-count { font-size:.85rem;color:var(--text-muted);margin-left:auto; }
-
-        .notifs-list { display:flex;flex-direction:column;gap:2px;padding:0 16px; }
-        .notif-skeleton { height:64px;background:var(--bg-elevated);border-radius:12px;animation:shimmer 1.5s infinite ease-in-out; }
-        @keyframes shimmer { 0%,100%{opacity:.4}50%{opacity:.8} }
-
-        .notif-group-label { font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;padding:14px 4px 6px; }
-
-        .notif-row {
-          display:flex;align-items:flex-start;gap:12px;padding:13px 14px;
-          border-radius:12px;position:relative;transition:.15s;
+        .notification-row:hover[aria-disabled="false"] {
+          transform: translateY(-1px);
+          border-color: var(--border);
+          background: var(--surface-2);
         }
-        .notif-row:hover { background:var(--bg-elevated); }
-        .notif-row.unread { background:color-mix(in srgb,var(--accent) 6%,transparent); }
-        .notif-icon { font-size:1.3rem;flex-shrink:0;margin-top:1px; }
-        .notif-body { flex:1;min-width:0; }
-        .notif-title { margin:0 0 2px;font-size:.9rem;font-weight:600; }
-        .notif-msg   { margin:0;font-size:.83rem;color:var(--text-muted);line-height:1.45; }
-        .notif-time  { font-size:.75rem;color:var(--text-muted);flex-shrink:0;margin-top:2px; }
-        .unread-dot  { width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:6px; }
-
-        .empty-state { display:flex;flex-direction:column;align-items:center;padding:60px 20px;gap:14px;color:var(--text-muted); }
-        .empty-state span { font-size:3rem; }
       `}</style>
     </div>
-  );
+  )
 }

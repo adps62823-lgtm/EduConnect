@@ -11,5 +11,18 @@
     "pomodoro_active": true,
     "pomodoro_start": "2026-03-19T06:20:32.517063+00:00",
     "created_at": "2026-03-19T06:17:33.861091+00:00"
+  },
+  {
+    "id": "f3ce821a68954a6780b103bf1e66b74a",
+    "name": "Test room",
+    "host_id": "c15c5b8893704a199739935345bdd1cd",
+    "subject": "",
+    "exam_target": "",
+    "max_members": 5,
+    "is_private": false,
+    "password": null,
+    "pomodoro_active": false,
+    "pomodoro_start": null,
+    "created_at": "2026-05-05T10:58:17.113910+00:00"
   }
 ]

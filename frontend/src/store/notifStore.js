@@ -11,6 +11,28 @@ function isRoomChat(chatId) {
   return typeof chatId === 'string' && chatId.startsWith('room_')
 }
 
+const FORWARDED_WS_EVENTS = new Set([
+  'webrtc_offer',
+  'webrtc_answer',
+  'webrtc_ice',
+  'room_join',
+  'room_leave',
+  'room_kick',
+  'room_media_state',
+  'room_whiteboard',
+  'room_screen_share',
+  'room_state_sync',
+  'room_state_sync_request',
+  'pomodoro_start',
+  'pomodoro_stop',
+  'conversation_updated',
+  'conversation_removed',
+  'message_deleted',
+  'message_read',
+  'chat_member_added',
+  'chat_member_removed',
+])
+
 export const useNotifStore = create((set) => ({
   notifications: [],
   unread: 0,
@@ -75,6 +97,13 @@ export const useWSStore = create((set, get) => ({
   _manualDisconnect: false,
   _userId: null,
 
+  refreshUnreadChats: async () => {
+    try {
+      const result = await chatAPI.getUnreadCount()
+      set({ unreadChats: result?.unread_count || 0 })
+    } catch {}
+  },
+
   connect: (userId) => {
     const { ws, _userId, _reconnectTimer } = get()
     if (ws && _userId === userId && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
@@ -101,9 +130,7 @@ export const useWSStore = create((set, get) => ({
         socket.send(JSON.stringify({ type: 'presence', status: 'online' }))
       } catch {}
 
-      chatAPI.getUnreadCount()
-        .then((result) => set({ unreadChats: result.unread_count || 0 }))
-        .catch(() => {})
+      get().refreshUnreadChats()
     }
 
     socket.onmessage = (event) => {
@@ -223,6 +250,26 @@ export const useWSStore = create((set, get) => ({
     get().send({ type: 'room_leave', room_id: roomId })
   },
 
+  sendRoomStateSyncRequest: (roomId, to) => {
+    get().send({ type: 'room_state_sync_request', room_id: roomId, to })
+  },
+
+  sendRoomStateSync: (roomId, to, state) => {
+    get().send({ type: 'room_state_sync', room_id: roomId, to, state })
+  },
+
+  sendRoomMediaState: (roomId, state) => {
+    get().send({ type: 'room_media_state', room_id: roomId, ...state })
+  },
+
+  sendRoomWhiteboard: (roomId, payload) => {
+    get().send({ type: 'room_whiteboard', room_id: roomId, ...payload })
+  },
+
+  sendRoomScreenShare: (roomId, payload) => {
+    get().send({ type: 'room_screen_share', room_id: roomId, ...payload })
+  },
+
   _handleMessage: (msg) => {
     const notifStore = useNotifStore.getState()
 
@@ -274,20 +321,18 @@ export const useWSStore = create((set, get) => ({
         break
       }
 
-      case 'webrtc_offer':
-      case 'webrtc_answer':
-      case 'webrtc_ice':
-      case 'room_join':
-      case 'room_leave':
-      case 'room_kick':
-      case 'pomodoro_start':
-      case 'pomodoro_stop': {
+      case 'conversation_removed': {
+        get().refreshUnreadChats()
         get()._emit(msg.type, msg)
         break
       }
 
-      default:
+      default: {
+        if (FORWARDED_WS_EVENTS.has(msg.type)) {
+          get()._emit(msg.type, msg)
+        }
         break
+      }
     }
   },
 

@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "3a8da87e5ed246c6842930540e69c6ef",
+    "room_id": "f3ce821a68954a6780b103bf1e66b74a",
+    "user_id": "c15c5b8893704a199739935345bdd1cd",
+    "is_host": true,
+    "study_time_mins": 0,
+    "joined_at": "2026-05-05T10:58:17.125659+00:00"
+  },
+  {
+    "id": "661498e2d34a4377a82f79eeaa7cccb7",
+    "room_id": "f3ce821a68954a6780b103bf1e66b74a",
+    "user_id": "6b448a77efb8476d909c150b7ebdcd34",
+    "is_host": false,
+    "study_time_mins": 0,
+    "joined_at": "2026-05-05T11:37:54.704883+00:00"
+  }
+]

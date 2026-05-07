@@ -85,6 +85,30 @@ function MessageBubble({ msg, prevMsg, isMine, onDelete }) {
   const showDate = !prevMsg || new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString()
   const showSender = !isMine && (!prevMsg || prevMsg.sender?.id !== msg.sender?.id)
 
+  if (msg.system) {
+    return (
+      <>
+        {showDate && <DateSep date={msg.created_at} />}
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 10px' }}>
+          <div
+            style={{
+              maxWidth: 320,
+              background: 'var(--surface-2)',
+              color: 'var(--text-3)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-full)',
+              padding: '6px 12px',
+              fontSize: '0.74rem',
+              textAlign: 'center',
+            }}
+          >
+            {msg.content}
+          </div>
+        </div>
+      </>
+    )
+  }
+
   return (
     <>
       {showDate && <DateSep date={msg.created_at} />}
@@ -427,6 +451,19 @@ export default function ChatConversation() {
     } catch {}
   }, [chatId, refreshUnreadCount])
 
+  const mergeConversationPayload = useCallback((payload) => {
+    if (!payload) return
+    setConv((prev) => {
+      if (!prev) return payload
+      return {
+        ...prev,
+        ...payload,
+        participants: payload.participants || prev.participants,
+        other_user: payload.other_user || prev.other_user,
+      }
+    })
+  }, [])
+
   const loadConversation = useCallback(async () => {
     setLoading(true)
     try {
@@ -463,11 +500,74 @@ export default function ChatConversation() {
     const unsubscribe = wsOn('chat_message', async (msg) => {
       if (msg.chat_id !== chatId) return
       setMessages((prev) => mergeMessages(prev, [{ ...msg, is_mine: msg.sender_id === currentUser?.id }]))
-      await markConversationRead()
+      mergeConversationPayload(msg.conversation)
+      if (msg.sender_id !== currentUser?.id) {
+        await markConversationRead()
+      }
     })
 
     return unsubscribe
-  }, [chatId, currentUser?.id, markConversationRead, wsOn])
+  }, [chatId, currentUser?.id, markConversationRead, mergeConversationPayload, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('conversation_updated', (event) => {
+      if (event.chat_id !== chatId) return
+      mergeConversationPayload(event.conversation)
+    })
+
+    return unsubscribe
+  }, [chatId, mergeConversationPayload, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('message_deleted', (event) => {
+      if (event.chat_id !== chatId) return
+      setMessages((prev) => prev.filter((msg) => msg.id !== event.message_id))
+    })
+
+    return unsubscribe
+  }, [chatId, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('message_read', (event) => {
+      if (event.chat_id !== chatId || event.read_by === currentUser?.id) return
+      const readIds = new Set(event.message_ids || [])
+      if (readIds.size === 0) return
+
+      setMessages((prev) =>
+        prev.map((msg) => (readIds.has(msg.id) ? { ...msg, is_read: true } : msg))
+      )
+    })
+
+    return unsubscribe
+  }, [chatId, currentUser?.id, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('chat_member_added', (event) => {
+      if (event.chat_id !== chatId || !event.added_user) return
+      handleMemberAdded(event.added_user)
+    })
+
+    return unsubscribe
+  }, [chatId, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('chat_member_removed', (event) => {
+      if (event.chat_id !== chatId) return
+      handleMemberRemoved(event.removed_user_id)
+    })
+
+    return unsubscribe
+  }, [chatId, wsOn])
+
+  useEffect(() => {
+    const unsubscribe = wsOn('conversation_removed', (event) => {
+      if (event.chat_id !== chatId) return
+      toast.error('You were removed from this conversation.')
+      navigate('/chat', { replace: true })
+    })
+
+    return unsubscribe
+  }, [chatId, navigate, wsOn])
 
   useEffect(() => {
     return () => {
@@ -698,7 +798,7 @@ export default function ChatConversation() {
 
         {messages.length === 0 ? (
           <EmptyState
-            icon="Chat"
+            icon="💬"
             title="Say hello"
             desc={`Start a conversation with ${conv.is_group ? conv.name : other?.name}.`}
           />

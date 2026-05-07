@@ -82,29 +82,84 @@ async def upload_cover(cover: UploadFile=File(...), current_user: dict=Depends(g
 
 # ── THEME ─────────────────────────────────────────────────
 class ThemeUpdate(BaseModel):
-    base_theme:    Optional[str] = None
-    accent_color:  Optional[str] = None
-    wallpaper_url: Optional[str] = None
-    font_size:     Optional[str] = None
-    compact_mode:  Optional[bool] = None
+    theme:              Optional[str] = None
+    base_theme:         Optional[str] = None
+    primary_color:      Optional[str] = None
+    accent_color:       Optional[str] = None
+    background_color:    Optional[str] = None
+    background_wallpaper: Optional[str] = None
+    wallpaper_url:      Optional[str] = None
+    navbar_position:    Optional[str] = None
+    font_size:          Optional[str] = None
+    animations:         Optional[bool] = None
+    compact_mode:       Optional[bool] = None
+
+
+def _normalize_theme_record(record: dict) -> dict:
+    if not record:
+        return None
+    return {
+        "id": record.get("id"),
+        "user_id": record.get("user_id"),
+        "theme": record.get("theme") or record.get("base_theme") or "dark",
+        "primary_color": record.get("primary_color") or record.get("accent_color") or "#6366f1",
+        "accent_color": record.get("accent_color") or record.get("primary_color"),
+        "background_color": record.get("background_color"),
+        "background_wallpaper": record.get("background_wallpaper") or record.get("wallpaper_url"),
+        "navbar_position": record.get("navbar_position") or "bottom",
+        "font_size": record.get("font_size") or "medium",
+        "animations": record.get("animations", True),
+        "compact_mode": record.get("compact_mode", False),
+        "created_at": record.get("created_at"),
+    }
 
 @router.get("/theme/me")
 def get_theme(current_user: dict=Depends(get_current_user)):
     theme = db.find_one("user_themes", user_id=current_user["id"])
-    return theme or {"base_theme":"dark","accent_color":"blue","wallpaper_url":None,"font_size":"medium","compact_mode":False}
+    return _normalize_theme_record(theme) or {
+        "theme": "dark",
+        "primary_color": "#6366f1",
+        "accent_color": "#6366f1",
+        "background_color": None,
+        "background_wallpaper": None,
+        "navbar_position": "bottom",
+        "font_size": "medium",
+        "animations": True,
+        "compact_mode": False,
+    }
 
 @router.put("/theme/me")
 def update_theme(req: ThemeUpdate, current_user: dict=Depends(get_current_user)):
-    updates = {k: v for k,v in req.dict().items() if v is not None}
+    payload = {k: v for k,v in req.dict().items() if v is not None}
+    if "base_theme" in payload:
+        payload["theme"] = payload.pop("base_theme")
+    if "wallpaper_url" in payload:
+        payload["background_wallpaper"] = payload.pop("wallpaper_url")
+    if "accent_color" in payload and "primary_color" not in payload:
+        payload["primary_color"] = payload["accent_color"]
+
     existing = db.find_one("user_themes", user_id=current_user["id"])
     if existing:
-        return db.update_one("user_themes", existing["id"], updates)
-    theme = {"id": uuid.uuid4().hex, "user_id": current_user["id"],
-             "base_theme": "dark", "accent_color": "blue",
-             "wallpaper_url": None, "font_size": "medium", "compact_mode": False,
-             **updates, "created_at": _now()}
+        updated = db.update_one("user_themes", existing["id"], payload)
+        return _normalize_theme_record(updated)
+
+    theme = {
+        "id": uuid.uuid4().hex,
+        "user_id": current_user["id"],
+        "theme": "dark",
+        "primary_color": "#6366f1",
+        "accent_color": "#6366f1",
+        "background_color": None,
+        "background_wallpaper": None,
+        "navbar_position": "bottom",
+        "font_size": "medium",
+        "animations": True,
+        "compact_mode": False,
+        **payload,
+        "created_at": _now(),
+    }
     db.insert("user_themes", theme)
-    return theme
+    return _normalize_theme_record(theme)
 
 # ── EXAM COUNTDOWNS ───────────────────────────────────────
 class CountdownCreate(BaseModel):

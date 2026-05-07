@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Heart, MessageCircle } from "lucide-react";
 import { authAPI, feedAPI } from "../api";
 import UserCard from "../components/UserCard";
 import { useAuthStore } from "../store/authStore";
@@ -82,9 +83,13 @@ function PostCard({ post }) {
 
         <div className="explore-actions">
           <button className={`eaction ${liked ? "liked" : ""}`} onClick={handleLike}>
-            {liked ? "Liked" : "Like"} {likeCount}
+            <Heart size={16} fill={liked ? "currentColor" : "none"} />
+            <span>{likeCount}</span>
           </button>
-          <span className="eaction">Comments {post.comments_count || 0}</span>
+          <button type="button" className="eaction" onClick={(event) => event.stopPropagation()}>
+            <MessageCircle size={16} />
+            <span>{post.comments_count || 0}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -648,8 +653,13 @@ export default function Explore() {
           cursor: pointer;
           color: var(--text-muted);
           font-size: 0.84rem;
-          padding: 2px 0;
+          padding: 4px 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          border-radius: 999px;
         }
+        .eaction:hover { background: var(--bg-elevated); }
         .eaction.liked { color: #e11d48; font-weight: 700; }
 
         .empty-state {

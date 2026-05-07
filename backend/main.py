@@ -43,6 +43,26 @@ def _user_payload(user: dict | None) -> dict | None:
     }
 
 
+def _room_member_ids(room_id: str) -> list[str]:
+    return [
+        row["user_id"]
+        for row in database.find_many("room_members", room_id=room_id)
+        if row.get("user_id")
+    ]
+
+
+def _is_room_member(room_id: str, user_id: str) -> bool:
+    return user_id in _room_member_ids(room_id)
+
+
+def _pick_fields(source: dict, allowed_fields: set[str]) -> dict:
+    return {
+        key: source[key]
+        for key in allowed_fields
+        if key in source
+    }
+
+
 class ConnectionManager:
     def __init__(self):
         self.active: dict[str, list[WebSocket]] = {}
@@ -91,11 +111,7 @@ manager = ConnectionManager()
 
 
 async def _send_room_event(room_id: str, message: dict, exclude: str | None = None):
-    member_ids = [
-        row["user_id"]
-        for row in database.find_many("room_members", room_id=room_id)
-        if row.get("user_id")
-    ]
+    member_ids = _room_member_ids(room_id)
     if member_ids:
         await manager.send_to_users(member_ids, message, exclude=exclude)
 
@@ -126,7 +142,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -242,9 +258,22 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                             exclude=user_id,
                         )
 
-            elif event_type in ("webrtc_offer", "webrtc_answer", "webrtc_ice", "offer", "answer", "ice_candidate"):
+            elif event_type in (
+                "webrtc_offer",
+                "webrtc_answer",
+                "webrtc_ice",
+                "offer",
+                "answer",
+                "ice_candidate",
+                "room_state_sync",
+                "room_state_sync_request",
+            ):
                 target = data.get("to")
-                if target:
+                room_id = data.get("room_id")
+                if target and room_id and database.find_one("rooms", id=room_id):
+                    member_ids = _room_member_ids(room_id)
+                    if user_id not in member_ids or target not in member_ids:
+                        continue
                     await manager.send_to_user(target, {**data, "from": user_id})
 
             elif event_type == "room_join":
@@ -300,6 +329,74 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                             "type": "pomodoro_stop",
                             "room_id": room_id,
                             "user_id": user_id,
+                        },
+                        exclude=user_id,
+                    )
+
+            elif event_type == "room_media_state":
+                room_id = data.get("room_id")
+                if database.find_one("rooms", id=room_id) and _is_room_member(room_id, user_id):
+                    await _send_room_event(
+                        room_id,
+                        {
+                            "type": "room_media_state",
+                            "room_id": room_id,
+                            "user_id": user_id,
+                            **_pick_fields(
+                                data,
+                                {
+                                    "mic_on",
+                                    "cam_on",
+                                    "screen_sharing",
+                                    "hand_raised",
+                                    "background_mode",
+                                    "background_color",
+                                    "background_image",
+                                    "video_enabled",
+                                    "audio_enabled",
+                                },
+                            ),
+                        },
+                        exclude=user_id,
+                    )
+
+            elif event_type == "room_whiteboard":
+                room_id = data.get("room_id")
+                if database.find_one("rooms", id=room_id) and _is_room_member(room_id, user_id):
+                    await _send_room_event(
+                        room_id,
+                        {
+                            "type": "room_whiteboard",
+                            "room_id": room_id,
+                            "user_id": user_id,
+                            **_pick_fields(
+                                data,
+                                {
+                                    "action",
+                                    "tool",
+                                    "color",
+                                    "size",
+                                    "stroke",
+                                    "points",
+                                    "page",
+                                    "snapshot",
+                                    "revision",
+                                },
+                            ),
+                        },
+                        exclude=user_id,
+                    )
+
+            elif event_type == "room_screen_share":
+                room_id = data.get("room_id")
+                if database.find_one("rooms", id=room_id) and _is_room_member(room_id, user_id):
+                    await _send_room_event(
+                        room_id,
+                        {
+                            "type": "room_screen_share",
+                            "room_id": room_id,
+                            "user_id": user_id,
+                            **_pick_fields(data, {"active", "label"}),
                         },
                         exclude=user_id,
                     )

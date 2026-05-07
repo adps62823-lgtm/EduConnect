@@ -258,5 +258,16 @@
     "media_type": "file",
     "is_read": false,
     "created_at": "2026-05-03T11:06:00.973795+00:00"
+  },
+  {
+    "id": "cffc647c51b446feb54180732aebb8de",
+    "chat_id": "8e33c10f28084a4398c29a95a1140c08",
+    "sender_id": "c15c5b8893704a199739935345bdd1cd",
+    "content": "hiii",
+    "media_url": null,
+    "media_type": null,
+    "is_read": false,
+    "system": false,
+    "created_at": "2026-05-07T09:52:07.136053+00:00"
   }
 ]

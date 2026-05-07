@@ -1,46 +1,66 @@
-/**
- * QuestionDetail.jsx — Stack Overflow-style question + answers
- * Vote answers · Accept answer · Code blocks · Senior matcher
- */
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
-  ChevronLeft, ChevronUp, ChevronDown, CheckCircle,
-  Clock, Eye, Send, Trash2, Users, Award,
+  Award,
+  CheckCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Clock,
+  Eye,
+  MessageSquare,
+  Send,
+  Trash2,
+  Users,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { helpAPI } from '@/api'
 import useAuthStore from '@/store/authStore'
 import Avatar from '@/components/Avatar'
-import {
-  Button, Tag, Spinner, EmptyState, StatBox, PageHeader,
-} from '@/components/ui'
+import { Button, EmptyState, PageHeader, Spinner, StatBox, Tag } from '@/components/ui'
 import toast from 'react-hot-toast'
 
-// ── Simple code-block renderer ────────────────────────────
 function RichContent({ text }) {
   if (!text) return null
+
   const parts = text.split(/(```[\s\S]*?```)/g)
+
   return (
     <div>
-      {parts.map((part, i) => {
+      {parts.map((part, index) => {
         if (part.startsWith('```') && part.endsWith('```')) {
           const code = part.slice(3, -3).replace(/^\w+\n/, '')
           return (
-            <pre key={i} style={{
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)', padding: '12px 16px',
-              overflowX: 'auto', fontSize: '0.82rem',
-              fontFamily: 'var(--font-mono)', lineHeight: 1.7,
-              margin: '8px 0',
-            }}>
+            <pre
+              key={index}
+              style={{
+                background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: '12px 16px',
+                overflowX: 'auto',
+                fontSize: '0.82rem',
+                fontFamily: 'var(--font-mono)',
+                lineHeight: 1.7,
+                margin: '8px 0',
+              }}
+            >
               <code>{code}</code>
             </pre>
           )
         }
+
         return (
-          <p key={i} style={{ lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap', margin: '4px 0' }}>
+          <p
+            key={index}
+            style={{
+              lineHeight: 1.7,
+              color: 'var(--text)',
+              whiteSpace: 'pre-wrap',
+              margin: '4px 0',
+            }}
+          >
             {part}
           </p>
         )
@@ -49,23 +69,32 @@ function RichContent({ text }) {
   )
 }
 
-// ── Answer card ───────────────────────────────────────────
-function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, onDeleted }) {
-  const currentUser = useAuthStore(s => s.user)
-  const [answer, setAnswer] = useState(init)
+function AnswerCard({ answer: initialAnswer, questionId, questionAuthorId, onAccepted, onDeleted }) {
+  const currentUser = useAuthStore((state) => state.user)
+  const [answer, setAnswer] = useState(initialAnswer)
   const [voting, setVoting] = useState(false)
-  const isMe        = answer.author?.id === currentUser?.id
-  const isQAuthor   = currentUser?.id === questionAuthorId
-  const isAccepted  = answer.is_accepted
 
-  async function vote(dir) {
+  useEffect(() => {
+    setAnswer(initialAnswer)
+  }, [initialAnswer])
+
+  const isMe = answer.author?.id === currentUser?.id
+  const isQuestionAuthor = currentUser?.id === questionAuthorId
+  const isAccepted = Boolean(answer.is_accepted)
+
+  async function vote(value) {
     if (voting) return
+
     setVoting(true)
     try {
-      const res = await helpAPI.voteAnswer(questionId, answer.id, dir)
-      setAnswer(a => ({ ...a, vote_count: res.vote_count, my_vote: res.my_vote }))
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Could not vote.')
+      const result = await helpAPI.voteAnswer(questionId, answer.id, value)
+      setAnswer((previous) => ({
+        ...previous,
+        vote_count: result?.vote_count ?? previous.vote_count,
+        my_vote: result?.my_vote ?? previous.my_vote,
+      }))
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not vote.')
     } finally {
       setVoting(false)
     }
@@ -73,10 +102,11 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
 
   async function handleAccept() {
     try {
-      await helpAPI.acceptAnswer(questionId, answer.id)
-      setAnswer(a => ({ ...a, is_accepted: !a.is_accepted }))
-      onAccepted(answer.id)
-      toast.success(isAccepted ? 'Unaccepted.' : '✅ Answer accepted!')
+      const result = await helpAPI.acceptAnswer(questionId, answer.id)
+      const accepted = Boolean(result?.is_accepted)
+      setAnswer((previous) => ({ ...previous, is_accepted: accepted }))
+      onAccepted(answer.id, accepted)
+      toast.success(accepted ? 'Answer accepted.' : 'Answer unaccepted.')
     } catch {
       toast.error('Could not accept answer.')
     }
@@ -84,26 +114,23 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
 
   async function handleDelete() {
     if (!window.confirm('Delete this answer?')) return
+
     try {
       await helpAPI.deleteAnswer(questionId, answer.id)
-      setAnswer(null)
-      onDeleted?.(answer.id)
+      onDeleted(answer.id)
       toast.success('Answer deleted.')
     } catch {
-      toast.error('Could not delete.')
+      toast.error('Could not delete answer.')
     }
   }
-
-  if (!answer) return null
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={isAccepted ? 'answer-accepted' : 'card'}
-      style={{ display: 'flex', gap: 14, padding: '16px' }}
+      style={{ display: 'flex', gap: 14, padding: 16 }}
     >
-      {/* Vote column */}
       <div className="vote-column" style={{ minWidth: 44 }}>
         <button
           className={`vote-btn ${answer.my_vote === 1 ? 'voted-up' : ''}`}
@@ -114,12 +141,19 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
           <ChevronUp size={16} />
         </button>
 
-        <span style={{
-          fontWeight: 800, fontSize: '1.1rem', lineHeight: 1,
-          color: answer.vote_count > 0 ? 'var(--green)'
-               : answer.vote_count < 0 ? 'var(--red)'
-               : 'var(--text)',
-        }}>
+        <span
+          style={{
+            fontWeight: 800,
+            fontSize: '1.1rem',
+            lineHeight: 1,
+            color:
+              (answer.vote_count ?? 0) > 0
+                ? 'var(--green)'
+                : (answer.vote_count ?? 0) < 0
+                  ? 'var(--red)'
+                  : 'var(--text)',
+          }}
+        >
           {answer.vote_count ?? 0}
         </span>
 
@@ -127,21 +161,24 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
           className={`vote-btn ${answer.my_vote === -1 ? 'voted-down' : ''}`}
           onClick={() => vote(-1)}
           disabled={voting || isMe}
+          title={isMe ? "Can't vote on your own answer" : 'Downvote'}
         >
           <ChevronDown size={16} />
         </button>
 
-        {/* Accept button (only question author) */}
-        {isQAuthor && !isMe && (
+        {isQuestionAuthor && !isMe && (
           <button
             onClick={handleAccept}
             title={isAccepted ? 'Unaccept' : 'Accept this answer'}
             style={{
               marginTop: 6,
               color: isAccepted ? 'var(--green)' : 'var(--text-3)',
-              background: 'none', border: 'none', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'color 150ms',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <CheckCircle size={22} fill={isAccepted ? 'var(--green)' : 'none'} />
@@ -149,27 +186,38 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
         )}
       </div>
 
-      {/* Content */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         {isAccepted && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            background: 'var(--green)', color: '#fff',
-            fontSize: '0.72rem', fontWeight: 700, padding: '2px 10px',
-            borderRadius: 'var(--radius-full)', marginBottom: 10,
-          }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              background: 'var(--green)',
+              color: '#fff',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '2px 10px',
+              borderRadius: 'var(--radius-full)',
+              marginBottom: 10,
+            }}
+          >
             <CheckCircle size={11} /> Accepted Answer
           </div>
         )}
 
         <RichContent text={answer.content} />
 
-        {/* Author + actions */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          marginTop: 14, paddingTop: 10,
-          borderTop: '1px solid var(--border)',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginTop: 14,
+            paddingTop: 10,
+            borderTop: '1px solid var(--border)',
+          }}
+        >
           <Avatar user={answer.author} size="sm" showRing />
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>{answer.author?.name}</div>
@@ -183,9 +231,15 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
             <button
               onClick={handleDelete}
               style={{
-                marginLeft: 'auto', background: 'none', border: 'none',
-                cursor: 'pointer', color: 'var(--red)', display: 'flex',
-                alignItems: 'center', gap: 4, fontSize: '0.78rem',
+                marginLeft: 'auto',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--red)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: '0.78rem',
               }}
             >
               <Trash2 size={13} /> Delete
@@ -197,22 +251,28 @@ function AnswerCard({ answer: init, questionId, questionAuthorId, onAccepted, on
   )
 }
 
-// ── Senior Matcher panel ──────────────────────────────────
 function SeniorMatcher({ questionId }) {
-  const [seniors, setSeniors]   = useState([])
-  const [loading, setLoading]   = useState(false)
-  const [visible, setVisible]   = useState(false)
   const navigate = useNavigate()
+  const [seniors, setSeniors] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [visible, setVisible] = useState(false)
 
   async function load() {
-    if (seniors.length > 0) { setVisible(v => !v); return }
+    if (seniors.length > 0) {
+      setVisible((previous) => !previous)
+      return
+    }
+
     setLoading(true)
     try {
-      const res = await helpAPI.seniorMatch(questionId)
-      setSeniors(Array.isArray(res) ? res : (res?.seniors || []))
+      const result = await helpAPI.seniorMatch(questionId)
+      setSeniors(Array.isArray(result) ? result : result?.seniors || [])
       setVisible(true)
-    } catch {}
-    finally { setLoading(false) }
+    } catch {
+      toast.error('Could not load senior matches.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -226,7 +286,7 @@ function SeniorMatcher({ questionId }) {
         </Button>
       </div>
       <p style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: 4 }}>
-        Students who solved similar problems
+        Students who might be able to help quickly
       </p>
 
       <AnimatePresence>
@@ -238,25 +298,38 @@ function SeniorMatcher({ questionId }) {
             style={{ overflow: 'hidden', marginTop: 12 }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {seniors.map(s => (
-                <div key={s.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 10px', background: 'var(--surface-2)',
-                  borderRadius: 'var(--radius)',
-                }}>
-                  <Avatar user={s} size="sm" showRing />
+              {seniors.map((senior) => (
+                <div
+                  key={senior.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '8px 10px',
+                    background: 'var(--surface-2)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                >
+                  <Avatar user={senior} size="sm" showRing />
                   <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontWeight: 700, fontSize: '0.82rem' }} className="truncate">{s.name}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem' }} className="truncate">
+                      {senior.name}
+                    </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-3)' }}>
-                      {s.accepted_count} accepted · {s.reputation} rep
+                      {senior.exam_target || senior.grade || 'Student'} · {senior.reputation ?? 0} rep
                     </div>
                   </div>
                   <button
-                    onClick={() => navigate('/chat', { state: { openDMWith: s.id } })}
+                    onClick={() => navigate('/chat', { state: { openDMWith: senior.id } })}
                     style={{
-                      background: 'var(--primary-light)', border: '1px solid var(--primary)40',
-                      color: 'var(--primary)', borderRadius: 'var(--radius-sm)',
-                      padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary)40',
+                      color: 'var(--primary)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '4px 10px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
                     }}
                   >
                     Message
@@ -271,66 +344,91 @@ function SeniorMatcher({ questionId }) {
   )
 }
 
-// ══════════════════════════════════════════════════════════
-// MAIN PAGE
-// ══════════════════════════════════════════════════════════
 export default function QuestionDetail() {
   const { questionId } = useParams()
-  const navigate       = useNavigate()
-  const currentUser    = useAuthStore(s => s.user)
+  const navigate = useNavigate()
+  const currentUser = useAuthStore((state) => state.user)
 
-  const [question, setQuestion]   = useState(null)
-  const [answers,  setAnswers]    = useState([])
-  const [loading,  setLoading]    = useState(true)
+  const [question, setQuestion] = useState(null)
+  const [answers, setAnswers] = useState([])
+  const [loading, setLoading] = useState(true)
   const [answerText, setAnswerText] = useState('')
-  const [submitting,  setSubmitting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  const loadQuestion = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await helpAPI.getQuestion(questionId)
+      setQuestion(result?.question || result)
+      setAnswers(result?.answers || [])
+    } catch {
+      toast.error('Question not found.')
+      navigate('/help')
+    } finally {
+      setLoading(false)
+    }
+  }, [navigate, questionId])
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await helpAPI.getQuestion(questionId)
-        setQuestion(res?.question || res)
-        setAnswers(res?.answers || [])
-      } catch {
-        toast.error('Question not found.')
-        navigate('/help')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [questionId])
+    loadQuestion()
+  }, [loadQuestion])
 
-  async function submitAnswer(e) {
-    e.preventDefault()
+  async function submitAnswer(event) {
+    event.preventDefault()
     if (!answerText.trim() || answerText.trim().length < 10) {
       toast.error('Answer must be at least 10 characters.')
       return
     }
+
     setSubmitting(true)
     try {
-      const res = await helpAPI.postAnswer(questionId, { content: answerText.trim() })
-      setAnswers(prev => [...prev, res])
-      setQuestion(q => ({ ...q, answers_count: (q.answers_count || 0) + 1 }))
+      const result = await helpAPI.postAnswer(questionId, { content: answerText.trim() })
+      setAnswers((previous) => [...previous, result])
+      setQuestion((previous) =>
+        previous
+          ? { ...previous, answers_count: (previous.answers_count || 0) + 1 }
+          : previous
+      )
       setAnswerText('')
-      toast.success('Answer posted! 🎉')
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Could not post answer.')
+      toast.success('Answer posted.')
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not post answer.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  function handleAnswerAccepted(answerId) {
-    setAnswers(prev => prev.map(a => ({
-      ...a,
-      is_accepted: a.id === answerId ? !a.is_accepted : false,
-    })))
-    setQuestion(q => ({ ...q, is_answered: true }))
+  function handleAnswerAccepted(answerId, accepted) {
+    setAnswers((previous) =>
+      previous.map((answer) => ({
+        ...answer,
+        is_accepted: answer.id === answerId ? accepted : false,
+      }))
+    )
+    setQuestion((previous) => (previous ? { ...previous, is_answered: accepted } : previous))
+  }
+
+  function handleAnswerDeleted(answerId) {
+    setAnswers((previous) => {
+      const deleted = previous.find((answer) => answer.id === answerId)
+      const nextAnswers = previous.filter((answer) => answer.id !== answerId)
+
+      setQuestion((current) => {
+        if (!current) return current
+        return {
+          ...current,
+          answers_count: Math.max(0, (current.answers_count || previous.length) - 1),
+          is_answered: deleted?.is_accepted ? nextAnswers.some((answer) => answer.is_accepted) : current.is_answered,
+        }
+      })
+
+      return nextAnswers
+    })
   }
 
   async function handleDeleteQuestion() {
     if (!window.confirm('Delete this question? This cannot be undone.')) return
+
     try {
       await helpAPI.deleteQuestion(questionId)
       toast.success('Question deleted.')
@@ -340,15 +438,19 @@ export default function QuestionDetail() {
     }
   }
 
-  if (loading) return (
-    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Spinner size={32} />
-    </div>
-  )
+  if (loading) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spinner size={32} />
+      </div>
+    )
+  }
 
   if (!question) return null
 
   const isMyQuestion = question.author?.id === currentUser?.id
+  const questionVotes = question.vote_count ?? question.votes ?? 0
+  const questionViews = question.views ?? 0
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -359,62 +461,78 @@ export default function QuestionDetail() {
             <ChevronLeft size={20} />
           </button>
         }
-        action={isMyQuestion && (
-          <button
-            onClick={handleDeleteQuestion}
-            style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--red)', display: 'flex', alignItems: 'center', gap: 4,
-              fontSize: '0.8rem',
-            }}
-          >
-            <Trash2 size={14} /> Delete
-          </button>
-        )}
+        action={
+          isMyQuestion && (
+            <button
+              onClick={handleDeleteQuestion}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--red)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: '0.8rem',
+              }}
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          )
+        }
       />
 
-      <div className="page-scroll">
+      <div>
         <div className="page-container" style={{ maxWidth: 780 }}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-
-            {/* Main column */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Question */}
               <div className="card">
                 <h1 style={{ fontSize: '1.15rem', fontWeight: 800, lineHeight: 1.4, marginBottom: 12 }}>
                   {question.title}
                 </h1>
 
-                {/* Meta */}
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-3)', marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-3)',
+                    marginBottom: 14,
+                  }}
+                >
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <Clock size={11} />
                     {formatDistanceToNow(new Date(question.created_at), { addSuffix: true })}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Eye size={11} /> {question.views} views
+                    <Eye size={11} /> {questionViews} views
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Award size={11} /> {question.votes ?? 0} votes
+                    <Award size={11} /> {questionVotes} votes
                   </span>
                 </div>
 
                 <RichContent text={question.content} />
 
-                {/* Tags */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-                  {question.subject     && <Tag>{question.subject}</Tag>}
+                  {question.subject && <Tag>{question.subject}</Tag>}
                   {question.exam_target && <Tag variant="accent">{question.exam_target}</Tag>}
-                  {question.tags?.map(t => <Tag key={t}>{t}</Tag>)}
+                  {question.tags?.map((tag) => (
+                    <Tag key={tag}>{tag}</Tag>
+                  ))}
                 </div>
 
-                {/* Author */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  marginTop: 16, paddingTop: 12,
-                  borderTop: '1px solid var(--border)',
-                }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    marginTop: 16,
+                    paddingTop: 12,
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
                   <Avatar user={question.author} size="md" showRing />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{question.author?.name}</div>
@@ -422,7 +540,7 @@ export default function QuestionDetail() {
                       {question.author?.reputation ?? 0} reputation
                     </div>
                   </div>
-                  {question.status === 'answered' && (
+                  {question.is_answered && (
                     <div style={{ marginLeft: 'auto' }}>
                       <Tag variant="green">✓ Solved</Tag>
                     </div>
@@ -430,55 +548,50 @@ export default function QuestionDetail() {
                 </div>
               </div>
 
-              {/* Answers */}
               <div>
                 <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>
                   {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
                 </h2>
 
                 {answers.length === 0 ? (
-                  <EmptyState
-                    icon="💡"
-                    title="No answers yet"
-                    desc="Be the first to help!"
-                  />
+                  <EmptyState icon="💡" title="No answers yet" desc="Be the first to help!" />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {/* Accepted answers first */}
                     {[...answers]
-                      .sort((a, b) => (b.is_accepted ? 1 : 0) - (a.is_accepted ? 1 : 0) || b.vote_count - a.vote_count)
-                      .map(a => (
+                      .sort(
+                        (a, b) =>
+                          (b.is_accepted ? 1 : 0) - (a.is_accepted ? 1 : 0) ||
+                          (b.vote_count ?? 0) - (a.vote_count ?? 0)
+                      )
+                      .map((answer) => (
                         <AnswerCard
-                          key={a.id}
-                          answer={a}
+                          key={answer.id}
+                          answer={answer}
                           questionId={questionId}
                           questionAuthorId={question.author?.id}
                           onAccepted={handleAnswerAccepted}
-                          onDeleted={(id) => setAnswers(prev => prev.filter(x => x.id !== id))}
+                          onDeleted={handleAnswerDeleted}
                         />
-                      ))
-                    }
+                      ))}
                   </div>
                 )}
               </div>
 
-              {/* Post answer form */}
               <div className="card">
-                <h3 style={{ fontWeight: 700, marginBottom: 12, fontSize: '0.95rem' }}>
-                  ✍️ Your Answer
-                </h3>
+                <h3 style={{ fontWeight: 700, marginBottom: 12, fontSize: '0.95rem' }}>✍️ Your Answer</h3>
                 <form onSubmit={submitAnswer} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <textarea
                     value={answerText}
-                    onChange={e => setAnswerText(e.target.value)}
+                    onChange={(event) => setAnswerText(event.target.value)}
                     placeholder={`Share your knowledge...\n\nFor code:\n\`\`\`python\n# your solution here\n\`\`\``}
                     className="input"
                     style={{
-                      minHeight: 160, resize: 'vertical',
+                      minHeight: 160,
+                      resize: 'vertical',
                       fontFamily: answerText.includes('```') ? 'var(--font-mono)' : 'var(--font-main)',
                     }}
                   />
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-3)' }}>
                       Wrap code in triple backticks for syntax highlighting.
                     </span>
@@ -496,16 +609,16 @@ export default function QuestionDetail() {
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div style={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}
-              className="sidebar-desktop">
-              {/* Stats */}
+            <div
+              style={{ width: 220, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}
+              className="sidebar-desktop"
+            >
               <div className="card" style={{ padding: 14 }}>
                 <div style={{ fontWeight: 700, fontSize: '0.82rem', marginBottom: 10 }}>📊 Stats</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <StatBox label="Answers" value={question.answers_count ?? 0} icon="💬" />
-                  <StatBox label="Views"   value={question.views ?? 0}         icon="👁" />
-                  <StatBox label="Votes"   value={question.votes ?? 0}         icon="⬆" color="var(--green)" />
+                  <StatBox label="Views" value={questionViews} icon="👁" />
+                  <StatBox label="Votes" value={questionVotes} icon="⬆" color="var(--green)" />
                 </div>
               </div>
 
