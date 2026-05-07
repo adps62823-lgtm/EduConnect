@@ -101,7 +101,6 @@ function ResourceCard({ resource, onLike, onDownload, currentUserId, onDelete })
         )}
       </div>
       </div>
-    </div>
   );
 }
 
