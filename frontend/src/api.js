@@ -4,7 +4,7 @@
  */
 import axios from 'axios'
 
-const api = axios.create({ baseURL: 'educonnect-production-903e.up.railway.app/api', timeout: 30000 })
+const api = axios.create({ baseURL: 'https://educonnect-backend-hxa5.onrender.com/api', timeout: 30000 })
 
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('token')
