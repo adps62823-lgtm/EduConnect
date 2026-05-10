@@ -168,6 +168,5 @@ export const gameAPI = {
 }
 
 export const createWebSocket = (userId) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return new WebSocket(`$wss://educonnect-backend-hxa5.onrender.com/ws/${userId}`)
+  return new WebSocket(`wss://educonnect-backend-hxa5.onrender.com/ws/${userId}`)
 }
