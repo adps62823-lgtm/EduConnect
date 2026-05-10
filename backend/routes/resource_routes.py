@@ -1,13 +1,14 @@
-"""resource_routes.py — Resource exchange (JSON store)"""
-import uuid, os, shutil
+"""resource_routes.py — Resource exchange (MongoDB + Cloudinary)"""
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 import database as db
 from auth import get_current_user
+from cloudinary_utils import upload_file
 
 router = APIRouter()
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
+
 def _now(): return datetime.now(timezone.utc).isoformat()
 
 def _serialize(r, cu):
@@ -46,19 +47,23 @@ async def upload_resource(
     current_user: dict=Depends(get_current_user),
 ):
     if not title.strip(): raise HTTPException(400, "Title required.")
+
+    # Read to check size, then re-wrap for Cloudinary
     content = await file.read()
-    if len(content) > 10*1024*1024: raise HTTPException(400, "File too large (max 10MB).")
-    ext = os.path.splitext(file.filename)[-1].lower()
-    fname = f"{uuid.uuid4().hex}{ext}"
-    folder = os.path.join(UPLOAD_DIR, "resources")
-    os.makedirs(folder, exist_ok=True)
-    with open(os.path.join(folder, fname), "wb") as out:
-        out.write(content)
+    if len(content) > 10*1024*1024:
+        raise HTTPException(400, "File too large (max 10MB).")
+
+    # Re-seek for Cloudinary upload
+    import io
+    file.file = io.BytesIO(content)
+
+    file_url = await upload_file(file, folder="resources")
+
     resource = {"id": uuid.uuid4().hex, "uploader_id": current_user["id"],
                 "title": title.strip(), "description": description.strip(),
                 "subject": subject or None, "resource_type": resource_type,
                 "exam_target": exam_target or None, "points_cost": max(0, points_cost),
-                "file_url": f"/uploads/resources/{fname}",
+                "file_url": file_url,
                 "file_name": file.filename, "file_size": len(content),
                 "downloads": 0, "created_at": _now()}
     db.insert("resources", resource)

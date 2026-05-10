@@ -1,7 +1,6 @@
 """chat_routes.py - Chat, group messaging, and conversation utilities."""
 
 import os
-import shutil
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
@@ -15,7 +14,6 @@ from auth import get_current_user
 
 router = APIRouter()
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
@@ -501,14 +499,9 @@ async def send_message(
     media_type = None
     if file and file.filename:
         filename = file.filename
-        media_type = _message_media_type(filename)
-        ext = os.path.splitext(filename)[-1].lower()
-        stored_name = f"{uuid.uuid4().hex}{ext}"
-        folder = os.path.join(UPLOAD_DIR, "chat")
-        os.makedirs(folder, exist_ok=True)
-        with open(os.path.join(folder, stored_name), "wb") as output_file:
-            shutil.copyfileobj(file.file, output_file)
-        media_url = f"/uploads/chat/{stored_name}"
+        from cloudinary_utils import upload_file as cloudinary_upload
+        media_type = _message_media_type(file.filename)
+        media_url = await cloudinary_upload(file, folder="chat")
 
     if not content.strip() and not media_url:
         raise HTTPException(400, "Message cannot be empty.")

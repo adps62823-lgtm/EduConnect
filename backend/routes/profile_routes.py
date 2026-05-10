@@ -1,24 +1,16 @@
-"""profile_routes.py — User profiles, avatars, themes (JSON store)"""
-import uuid, os, shutil
+"""profile_routes.py — User profiles, avatars, themes (MongoDB + Cloudinary)"""
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 import database as db
 from auth import get_current_user
+from cloudinary_utils import upload_file
 
 router = APIRouter()
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-def _now(): return datetime.now(timezone.utc).isoformat()
 
-def _save_upload(file, subfolder):
-    ext = os.path.splitext(file.filename)[-1].lower() or ".jpg"
-    fname = f"{uuid.uuid4().hex}{ext}"
-    folder = os.path.join(UPLOAD_DIR, subfolder)
-    os.makedirs(folder, exist_ok=True)
-    with open(os.path.join(folder, fname), "wb") as out:
-        shutil.copyfileobj(file.file, out)
-    return f"/uploads/{subfolder}/{fname}"
+def _now(): return datetime.now(timezone.utc).isoformat()
 
 def _build_profile(u, cu):
     posts      = db.find_many("posts", author_id=u["id"])
@@ -70,13 +62,13 @@ def get_user_posts(username: str, page: int=1, limit: int=12,
 
 @router.post("/avatar")
 async def upload_avatar(avatar: UploadFile=File(...), current_user: dict=Depends(get_current_user)):
-    url = _save_upload(avatar, "avatars")
+    url = await upload_file(avatar, folder="avatars")
     db.update_one("users", current_user["id"], {"avatar_url": url})
     return {"avatar_url": url}
 
 @router.post("/cover")
 async def upload_cover(cover: UploadFile=File(...), current_user: dict=Depends(get_current_user)):
-    url = _save_upload(cover, "covers")
+    url = await upload_file(cover, folder="covers")
     db.update_one("users", current_user["id"], {"cover_url": url})
     return {"cover_url": url}
 
@@ -93,7 +85,6 @@ class ThemeUpdate(BaseModel):
     font_size:          Optional[str] = None
     animations:         Optional[bool] = None
     compact_mode:       Optional[bool] = None
-
 
 def _normalize_theme_record(record: dict) -> dict:
     if not record:
@@ -117,47 +108,28 @@ def _normalize_theme_record(record: dict) -> dict:
 def get_theme(current_user: dict=Depends(get_current_user)):
     theme = db.find_one("user_themes", user_id=current_user["id"])
     return _normalize_theme_record(theme) or {
-        "theme": "dark",
-        "primary_color": "#6366f1",
-        "accent_color": "#6366f1",
-        "background_color": None,
-        "background_wallpaper": None,
-        "navbar_position": "bottom",
-        "font_size": "medium",
-        "animations": True,
-        "compact_mode": False,
+        "theme": "dark", "primary_color": "#6366f1", "accent_color": "#6366f1",
+        "background_color": None, "background_wallpaper": None,
+        "navbar_position": "bottom", "font_size": "medium",
+        "animations": True, "compact_mode": False,
     }
 
 @router.put("/theme/me")
 def update_theme(req: ThemeUpdate, current_user: dict=Depends(get_current_user)):
     payload = {k: v for k,v in req.dict().items() if v is not None}
-    if "base_theme" in payload:
-        payload["theme"] = payload.pop("base_theme")
-    if "wallpaper_url" in payload:
-        payload["background_wallpaper"] = payload.pop("wallpaper_url")
+    if "base_theme" in payload: payload["theme"] = payload.pop("base_theme")
+    if "wallpaper_url" in payload: payload["background_wallpaper"] = payload.pop("wallpaper_url")
     if "accent_color" in payload and "primary_color" not in payload:
         payload["primary_color"] = payload["accent_color"]
-
     existing = db.find_one("user_themes", user_id=current_user["id"])
     if existing:
         updated = db.update_one("user_themes", existing["id"], payload)
         return _normalize_theme_record(updated)
-
-    theme = {
-        "id": uuid.uuid4().hex,
-        "user_id": current_user["id"],
-        "theme": "dark",
-        "primary_color": "#6366f1",
-        "accent_color": "#6366f1",
-        "background_color": None,
-        "background_wallpaper": None,
-        "navbar_position": "bottom",
-        "font_size": "medium",
-        "animations": True,
-        "compact_mode": False,
-        **payload,
-        "created_at": _now(),
-    }
+    theme = {"id": uuid.uuid4().hex, "user_id": current_user["id"],
+             "theme": "dark", "primary_color": "#6366f1", "accent_color": "#6366f1",
+             "background_color": None, "background_wallpaper": None,
+             "navbar_position": "bottom", "font_size": "medium",
+             "animations": True, "compact_mode": False, **payload, "created_at": _now()}
     db.insert("user_themes", theme)
     return _normalize_theme_record(theme)
 
@@ -197,7 +169,8 @@ def get_followers(username: str, current_user: dict=Depends(get_current_user)):
         if follower:
             result.append({"id": follower["id"], "name": follower["name"],
                            "username": follower["username"], "avatar_url": follower.get("avatar_url"),
-                           "is_following": db.exists("follows", follower_id=current_user["id"], following_id=follower["id"])})
+                           "is_following": db.exists("follows", follower_id=current_user["id"],
+                                                     following_id=follower["id"])})
     return result
 
 @router.get("/{username}/following")
@@ -211,5 +184,6 @@ def get_following(username: str, current_user: dict=Depends(get_current_user)):
         if target:
             result.append({"id": target["id"], "name": target["name"],
                            "username": target["username"], "avatar_url": target.get("avatar_url"),
-                           "is_following": db.exists("follows", follower_id=current_user["id"], following_id=target["id"])})
+                           "is_following": db.exists("follows", follower_id=current_user["id"],
+                                                     following_id=target["id"])})
     return result

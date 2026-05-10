@@ -1,12 +1,11 @@
 fastapi
 uvicorn[standard]
+pymongo[srv]
+cloudinary
 python-jose[cryptography]
-bcrypt
 passlib[bcrypt]
 python-multipart
 aiofiles
-websockets
-pillow
 python-dotenv
 pydantic
 pydantic-settings

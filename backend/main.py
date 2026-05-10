@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
 import database
 from routes.auth_routes import router as auth_router
@@ -118,9 +117,8 @@ async def _send_room_event(room_id: str, message: dict, exclude: str | None = No
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    for subdir in ["avatars", "covers", "posts", "stories", "resources", "wallpapers", "chat"]:
-        os.makedirs(os.path.join("uploads", subdir), exist_ok=True)
-    logger.info("EduConnect backend started with JSON flat-file store")
+    database.ensure_indexes()
+    logger.info("EduConnect backend started — MongoDB + Cloudinary")
     yield
     logger.info("EduConnect backend shutting down")
 
@@ -142,13 +140,13 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# File uploads are served via Cloudinary CDN — no local static mount needed.
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(feed_router, prefix="/api/feed", tags=["Feed"])

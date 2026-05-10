@@ -1,104 +1,167 @@
 """
-database.py — Simple JSON flat-file store (replaces SQLAlchemy)
-Each entity lives in  data/<entity>.json  as a list of dicts.
-Thread-safe via a per-file lock.
+database.py — MongoDB backend for EduConnect
+Drop-in replacement for the flat-file JSON store.
+Exposes the exact same API: find_one, find_many, insert,
+update_one, delete_one, delete_many, count, exists, upsert, find_all.
+
+Every document is stored with a string `id` field (uuid hex).
+MongoDB's own `_id` is kept internal and never leaked to callers.
 """
 
 import os
-import json
-import threading
+import logging
 from typing import Any, Dict, List, Optional
 
-DATA_DIR = os.getenv("DATA_DIR", "data")
-os.makedirs(DATA_DIR, exist_ok=True)
+from pymongo import MongoClient
+from pymongo.collection import Collection
+from dotenv import load_dotenv
 
-_locks: Dict[str, threading.Lock] = {}
+load_dotenv()
 
-def _lock_for(name: str) -> threading.Lock:
-    if name not in _locks:
-        _locks[name] = threading.Lock()
-    return _locks[name]
+logger = logging.getLogger("educonnect.db")
 
-def _path(entity: str) -> str:
-    return os.path.join(DATA_DIR, f"{entity}.json")
+MONGO_URI = os.getenv("MONGO_URI", "")
+DB_NAME   = os.getenv("MONGO_DB_NAME", "educonnect")
 
-# ── Core read / write ──────────────────────────────────────
+if not MONGO_URI:
+    raise RuntimeError(
+        "MONGO_URI is not set. Add it to your .env file.\n"
+        "Example: MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/"
+    )
 
-def load(entity: str) -> List[Dict]:
-    p = _path(entity)
-    if not os.path.exists(p):
-        return []
-    with _lock_for(entity):
-        with open(p, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return []
+_client: MongoClient = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10_000)
+_db = _client[DB_NAME]
 
-def save(entity: str, records: List[Dict]) -> None:
-    p = _path(entity)
-    with _lock_for(entity):
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(records, f, indent=2, default=str)
+logger.info("MongoDB connected → database: %s", DB_NAME)
 
-# ── CRUD helpers ───────────────────────────────────────────
+
+# ── Internal helpers ──────────────────────────────────────
+
+def _col(entity: str) -> Collection:
+    """Return a collection, creating it lazily (MongoDB does this automatically)."""
+    return _db[entity]
+
+
+def _clean(doc: Optional[Dict]) -> Optional[Dict]:
+    """Strip MongoDB's internal _id from a document before returning to callers."""
+    if doc is None:
+        return None
+    doc = dict(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+def _match(kwargs: Dict) -> Dict:
+    """
+    Convert caller kwargs to a MongoDB query dict.
+    Callers always match on simple equality, e.g. find_one('users', id='abc').
+    """
+    return kwargs  # MongoDB accepts plain equality dicts directly
+
+
+# ── Public API (identical surface to the old flat-file version) ──
+
 
 def find_all(entity: str) -> List[Dict]:
-    return load(entity)
+    return [_clean(d) for d in _col(entity).find({})]
+
 
 def find_one(entity: str, **kwargs) -> Optional[Dict]:
-    for r in load(entity):
-        if all(r.get(k) == v for k, v in kwargs.items()):
-            return r
-    return None
+    return _clean(_col(entity).find_one(_match(kwargs)))
+
 
 def find_many(entity: str, **kwargs) -> List[Dict]:
-    return [r for r in load(entity) if all(r.get(k) == v for k, v in kwargs.items())]
+    query = _match(kwargs) if kwargs else {}
+    return [_clean(d) for d in _col(entity).find(query)]
+
 
 def insert(entity: str, record: Dict) -> Dict:
-    records = load(entity)
-    records.append(record)
-    save(entity, records)
-    return record
+    doc = dict(record)
+    _col(entity).insert_one(doc)
+    return _clean(doc)  # type: ignore[return-value]
+
 
 def update_one(entity: str, record_id: str, updates: Dict) -> Optional[Dict]:
-    records = load(entity)
-    for i, r in enumerate(records):
-        if r.get("id") == record_id:
-            records[i] = {**r, **updates}
-            save(entity, records)
-            return records[i]
-    return None
+    result = _col(entity).find_one_and_update(
+        {"id": record_id},
+        {"$set": updates},
+        return_document=True,  # return the updated document
+    )
+    return _clean(result)
+
 
 def delete_one(entity: str, record_id: str) -> bool:
-    records = load(entity)
-    new = [r for r in records if r.get("id") != record_id]
-    if len(new) == len(records):
-        return False
-    save(entity, new)
-    return True
+    result = _col(entity).delete_one({"id": record_id})
+    return result.deleted_count > 0
+
 
 def delete_many(entity: str, **kwargs) -> int:
-    records = load(entity)
-    new = [r for r in records if not all(r.get(k) == v for k, v in kwargs.items())]
-    removed = len(records) - len(new)
-    if removed:
-        save(entity, new)
-    return removed
+    result = _col(entity).delete_many(_match(kwargs))
+    return result.deleted_count
+
 
 def count(entity: str, **kwargs) -> int:
-    return len(find_many(entity, **kwargs)) if kwargs else len(load(entity))
+    query = _match(kwargs) if kwargs else {}
+    return _col(entity).count_documents(query)
+
 
 def exists(entity: str, **kwargs) -> bool:
-    return find_one(entity, **kwargs) is not None
+    return _col(entity).find_one(_match(kwargs), {"_id": 1}) is not None
+
 
 def upsert(entity: str, match: Dict, data: Dict) -> Dict:
-    """Update if match found, otherwise insert."""
-    records = load(entity)
-    for i, r in enumerate(records):
-        if all(r.get(k) == v for k, v in match.items()):
-            records[i] = {**r, **data}
-            save(entity, records)
-            return records[i]
-    save(entity, records + [data])
-    return data
+    """Update if match found, otherwise insert. Returns the final document."""
+    result = _col(entity).find_one_and_update(
+        _match(match),
+        {"$set": data},
+        upsert=True,
+        return_document=True,
+    )
+    return _clean(result)  # type: ignore[return-value]
+
+
+# ── Kept for compatibility (not used internally anymore) ──
+
+def load(entity: str) -> List[Dict]:
+    """Legacy alias for find_all."""
+    return find_all(entity)
+
+
+def save(entity: str, records: List[Dict]) -> None:
+    """
+    Legacy bulk-replace used by old flat-file code.
+    Replaces the entire collection — use sparingly.
+    """
+    col = _col(entity)
+    col.delete_many({})
+    if records:
+        col.insert_many([dict(r) for r in records])
+
+
+# ── Indexes (call once at startup for performance) ────────
+
+def ensure_indexes() -> None:
+    """Create useful indexes. Safe to call multiple times."""
+    indexes = {
+        "users":         [("username", 1), ("email", 1)],
+        "posts":         [("author_id", 1), ("created_at", -1)],
+        "messages":      [("chat_id", 1), ("created_at", 1)],
+        "conversations": [("participant_ids", 1)],
+        "follows":       [("follower_id", 1), ("following_id", 1)],
+        "notifications": [("user_id", 1), ("created_at", -1)],
+        "questions":     [("author_id", 1), ("created_at", -1)],
+        "comments":      [("post_id", 1)],
+        "post_likes":    [("post_id", 1), ("user_id", 1)],
+        "stories":       [("author_id", 1), ("created_at", -1)],
+        "rooms":         [("created_by", 1)],
+        "room_members":  [("room_id", 1), ("user_id", 1)],
+    }
+    for collection, fields in indexes.items():
+        col = _col(collection)
+        for field, direction in fields:
+            try:
+                col.create_index([(field, direction)])
+            except Exception as exc:
+                logger.warning("Index creation skipped for %s.%s: %s", collection, field, exc)
+
+    logger.info("MongoDB indexes ensured.")

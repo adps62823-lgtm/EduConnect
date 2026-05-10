@@ -1,33 +1,23 @@
-"""feed_routes.py — Instagram-clone feed (JSON store)"""
-import os, uuid, shutil, json
+"""feed_routes.py — Instagram-clone feed (MongoDB + Cloudinary)"""
+import uuid, json
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from pydantic import BaseModel
 import database as db
 from auth import get_current_user
+from cloudinary_utils import upload_file
 
 def _is_anon(post: dict) -> bool:
-    """Handle is_anonymous stored as bool True, string 'true', string 'True', or 1."""
     val = post.get("is_anonymous", False)
-    if isinstance(val, bool):   return val
-    if isinstance(val, str):    return val.lower() == "true"
-    if isinstance(val, int):    return val == 1
+    if isinstance(val, bool): return val
+    if isinstance(val, str):  return val.lower() == "true"
+    if isinstance(val, int):  return val == 1
     return False
 
-
 router = APIRouter()
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
-def _now(): return datetime.now(timezone.utc).isoformat()
 
-def _save_upload(file, subfolder):
-    ext = os.path.splitext(file.filename)[-1].lower() or ".bin"
-    fname = f"{uuid.uuid4().hex}{ext}"
-    folder = os.path.join(UPLOAD_DIR, subfolder)
-    os.makedirs(folder, exist_ok=True)
-    with open(os.path.join(folder, fname), "wb") as out:
-        shutil.copyfileobj(file.file, out)
-    return f"/uploads/{subfolder}/{fname}"
+def _now(): return datetime.now(timezone.utc).isoformat()
 
 def _serialize_post(post, current_user):
     likes    = db.find_many("post_likes", post_id=post["id"])
@@ -61,12 +51,23 @@ async def create_post(
         raise HTTPException(400, "Post must have content or at least one image/video.")
     try: tags_list = json.loads(tags)
     except: tags_list = []
-    image_urls = [_save_upload(img, "posts") for img in images if img.filename]
-    video_urls = [_save_upload(vid, "posts") for vid in videos if vid.filename]
+
+    image_urls = []
+    for img in images:
+        if img.filename:
+            image_urls.append(await upload_file(img, folder="posts"))
+
+    video_urls = []
+    for vid in videos:
+        if vid.filename:
+            video_urls.append(await upload_file(vid, folder="posts"))
+
     post = {"id": uuid.uuid4().hex, "author_id": current_user["id"],
-            "content": content.strip(), "images": image_urls, "videos": video_urls, "tags": tags_list[:10],
-            "subject": subject.strip() or None, "exam_tag": exam_tag.strip() or None,
-            "is_anonymous": is_anonymous in (True, "true", "True", 1, "1"), "created_at": _now()}
+            "content": content.strip(), "images": image_urls, "videos": video_urls,
+            "tags": tags_list[:10], "subject": subject.strip() or None,
+            "exam_tag": exam_tag.strip() or None,
+            "is_anonymous": is_anonymous in (True, "true", "True", 1, "1"),
+            "created_at": _now()}
     db.insert("posts", post)
     return _serialize_post(post, current_user)
 
@@ -80,20 +81,14 @@ def get_feed(
     all_posts = db.find_all("posts")
 
     if feed_type == "following":
-        # Only posts from people I follow + my own, NOT anonymous
         follows = db.find_many("follows", follower_id=current_user["id"])
         ids = {f["following_id"] for f in follows} | {current_user["id"]}
-        posts = [p for p in all_posts
-                 if p["author_id"] in ids and not _is_anon(p)]
+        posts = [p for p in all_posts if p["author_id"] in ids and not _is_anon(p)]
         posts.sort(key=lambda p: p["created_at"], reverse=True)
-
     elif feed_type == "trending":
-        # All non-anonymous posts platform-wide, sorted by likes
         posts = [p for p in all_posts if not _is_anon(p)]
         posts.sort(key=lambda p: len(db.find_many("post_likes", post_id=p["id"])), reverse=True)
-
     else:
-        # Anonymous tab — ONLY posts where is_anonymous is strictly True
         posts = [p for p in all_posts if _is_anon(p)]
         posts.sort(key=lambda p: p["created_at"], reverse=True)
 
@@ -186,8 +181,7 @@ def get_stories(current_user: dict = Depends(get_current_user)):
     visible = []
     for s in db.find_all("stories"):
         if s["author_id"] not in ids: continue
-        if s["created_at"] < cutoff:    continue
-        # Close-friends-only visibility
+        if s["created_at"] < cutoff: continue
         if s.get("audience") == "close_friends" and s["author_id"] != current_user["id"]:
             if not db.exists("close_friends", user_id=s["author_id"], friend_id=current_user["id"]):
                 continue
@@ -215,9 +209,10 @@ async def create_story(caption: str = Form(""),
                        audience: str = Form("public"),
                        media: UploadFile = File(...),
                        current_user: dict = Depends(get_current_user)):
-    ext = os.path.splitext(media.filename)[-1].lower()
-    media_type = "video" if ext in {".mp4",".mov"} else "image"
-    url = _save_upload(media, "stories")
+    import os
+    ext = os.path.splitext(media.filename or "")[-1].lower()
+    media_type = "video" if ext in {".mp4", ".mov", ".webm"} else "image"
+    url = await upload_file(media, folder="stories")
     audience = audience if audience in ("public", "close_friends") else "public"
     story = {"id": uuid.uuid4().hex, "author_id": current_user["id"],
              "media_url": url, "media_type": media_type, "caption": caption.strip() or None,
@@ -245,7 +240,7 @@ def get_journey(username: Optional[str]=None, page: int=1, limit: int=10,
     else:
         target_id = current_user["id"]
     entries = sorted(db.find_many("journey_posts", author_id=target_id),
-                     key=lambda e: e.get("week_number",0), reverse=True)
+                     key=lambda e: e.get("week_number", 0), reverse=True)
     total = len(entries)
     return {"entries": entries[(page-1)*limit:page*limit], "total": total, "has_more": page*limit < total}
 
