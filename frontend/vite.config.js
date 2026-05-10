@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://my-edu-connect-production.up.railway.app',
+        target: 'http://educonnect-backend-hxa5.onrender.com/api',
         changeOrigin: true,
       },
       '/uploads': {
