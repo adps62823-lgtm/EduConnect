@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://my-edu-connect-production.up.railway.app',
         changeOrigin: true,
       },
       '/uploads': {
