@@ -13,7 +13,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'educonnect-backend-hxa5.onrender.com/api',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/uploads': {
@@ -21,7 +21,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       '/ws': {
-        target: 'wss://localhost:8000',
+        target: 'ws://localhost:8000',
         ws: true,
         changeOrigin: true,
       },
