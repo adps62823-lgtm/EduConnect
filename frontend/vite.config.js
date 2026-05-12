@@ -4,19 +4,21 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+
+  // IMPORTANT for Capacitor: assets must use relative paths in the native build.
+  // We detect the build target via an env var set in package.json scripts.
+  base: process.env.CAPACITOR_BUILD ? './' : '/',
+
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
+
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://educonnect-backend-hxa5.onrender.com/api',
-        changeOrigin: true,
-      },
-      '/uploads': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
@@ -27,6 +29,7 @@ export default defineConfig({
       },
     },
   },
+
   build: {
     outDir: 'dist',
     sourcemap: false,
