@@ -9,15 +9,15 @@ const useAuthStore = create((set, get) => ({
 
   initAuth: () => {
     try {
-      const token = sessionStorage.getItem('token')
-      const user  = sessionStorage.getItem('user')
+      const token = localStorage.getItem('token')
+      const user  = localStorage.getItem('user')
       if (token && user) {
         set({ token, user: JSON.parse(user) })
         get().refreshMe()
       }
     } catch {
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
     }
   },
 
@@ -25,8 +25,8 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { access_token, user } = await authAPI.register(data)
-      sessionStorage.setItem('token', access_token)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('token', access_token)
+      localStorage.setItem('user', JSON.stringify(user))
       set({ token: access_token, user, loading: false })
       return { success: true }
     } catch (err) {
@@ -40,8 +40,8 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { access_token, user } = await authAPI.login(identifier, password)
-      sessionStorage.setItem('token', access_token)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('token', access_token)
+      localStorage.setItem('user', JSON.stringify(user))
       set({ token: access_token, user, loading: false })
       return { success: true }
     } catch (err) {
@@ -52,8 +52,8 @@ const useAuthStore = create((set, get) => ({
   },
 
   logout: () => {
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     set({ user: null, token: null })
     window.location.href = '/login'
   },
@@ -61,7 +61,7 @@ const useAuthStore = create((set, get) => ({
   refreshMe: async () => {
     try {
       const user = await authAPI.me()
-      sessionStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('user', JSON.stringify(user))
       set({ user })
     } catch {
       get().logout()
@@ -72,7 +72,7 @@ const useAuthStore = create((set, get) => ({
     set(state => {
       if (!state.user) return {}
       const user = { ...state.user, ...updates }
-      sessionStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('user', JSON.stringify(user))
       return { user }
     })
   },
@@ -81,7 +81,7 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true })
     try {
       const user = await authAPI.updateMe(data)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('user', JSON.stringify(user))
       set({ user, loading: false })
       return { success: true }
     } catch (err) {

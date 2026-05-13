@@ -4,10 +4,10 @@
  */
 import axios from 'axios'
 
-const api = axios.create({ baseURL: 'https://educonnect-backend-hxa5.onrender.com/api', timeout: 30000 })
+const api = axios.create({ baseURL: '/api', timeout: 30000 })
 
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token')
+  const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -16,8 +16,8 @@ api.interceptors.response.use(
   (res) => res.data,   // ← auto-unwrap: callers get data directly, not res.data
   (err) => {
     if (err.response?.status === 401) {
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
     return Promise.reject(err)
@@ -168,5 +168,6 @@ export const gameAPI = {
 }
 
 export const createWebSocket = (userId) => {
-  return new WebSocket(`wss://educonnect-backend-hxa5.onrender.com/ws/${userId}`)
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return new WebSocket(`${protocol}//${window.location.host}/ws/${userId}`)
 }
