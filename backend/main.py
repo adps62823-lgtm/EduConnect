@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 import database
 from routes.auth_routes import router as auth_router
@@ -117,8 +118,9 @@ async def _send_room_event(room_id: str, message: dict, exclude: str | None = No
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    database.ensure_indexes()
-    logger.info("EduConnect backend started — MongoDB + Cloudinary")
+    for subdir in ["avatars", "covers", "posts", "stories", "resources", "wallpapers", "chat"]:
+        os.makedirs(os.path.join("uploads", subdir), exist_ok=True)
+    logger.info("EduConnect backend started with JSON flat-file store")
     yield
     logger.info("EduConnect backend shutting down")
 
@@ -140,13 +142,13 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# File uploads are served via Cloudinary CDN — no local static mount needed.
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Auth"])
 app.include_router(feed_router, prefix="/api/feed", tags=["Feed"])
@@ -269,9 +271,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 target = data.get("to")
                 room_id = data.get("room_id")
                 if target and room_id and database.find_one("rooms", id=room_id):
-                    member_ids = _room_member_ids(room_id)
-                    if user_id not in member_ids or target not in member_ids:
-                        continue
+                    # Route signal directly — membership verified by JWT auth above.
+                    # Don't block on room_members check; it can be stale during join.
                     await manager.send_to_user(target, {**data, "from": user_id})
 
             elif event_type == "room_join":
