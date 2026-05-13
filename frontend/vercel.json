@@ -9,7 +9,7 @@
       "destination": "https://educonnect-backend-hxa5.onrender.com/ws/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!sw\\.js$|icon.*\\.png$).*)",
       "destination": "/index.html"
     }
   ]

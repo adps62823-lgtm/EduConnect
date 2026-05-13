@@ -1,4 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react'
+import { initPush, disablePush } from '@/pushService'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -165,10 +166,18 @@ const AnimatedRoutes = () => {
 }
 
 export default function App() {
-  const { initAuth }   = useAuthStore()
-  const { applyTheme } = useThemeStore()
+  const { initAuth, user } = useAuthStore()
+  const { applyTheme }     = useThemeStore()
   useEffect(() => { initAuth()   }, [])
   useEffect(() => { applyTheme() }, [])
+  // Init push notifications once user is logged in
+  useEffect(() => {
+    if (user?.id) {
+      // Small delay so the page settles before asking for permission
+      const t = setTimeout(() => initPush(), 2000)
+      return () => clearTimeout(t)
+    }
+  }, [user?.id])
   return (
     <ErrorBoundary>
       <BrowserRouter>
