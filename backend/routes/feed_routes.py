@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import database as db
 from auth import get_current_user
 from cloudinary_utils import upload_file
+from routes.push_routes import send_push_to_user
 
 def _is_anon(post: dict) -> bool:
     val = post.get("is_anonymous", False)
@@ -126,6 +127,9 @@ def toggle_like(post_id: str, current_user: dict = Depends(get_current_user)):
                                     "message": f"{current_user['name']} liked your post.",
                                     "actor_id": current_user["id"], "ref_id": post_id,
                                     "is_read": False, "created_at": _now()})
+    send_push_to_user(post["author_id"], title="New like ❤️",
+                      body=f"{current_user['name']} liked your post.",
+                      url="/feed", tag="like")
     return {"liked": True, "likes_count": count + 1}
 
 @router.get("/posts/{post_id}/comments")
@@ -160,6 +164,9 @@ def add_comment(post_id: str, req: CommentCreate, current_user: dict = Depends(g
                                     "message": f"{current_user['name']} commented on your post.",
                                     "actor_id": current_user["id"], "ref_id": post_id,
                                     "is_read": False, "created_at": _now()})
+    send_push_to_user(post["author_id"], title="New comment 💬",
+                      body=f"{current_user['name']} commented on your post.",
+                      url="/feed", tag="comment")
     return {"id": c["id"], "content": c["content"], "is_mine": True,
             "author": {"id": current_user["id"], "name": current_user["name"],
                        "username": current_user["username"], "avatar_url": current_user.get("avatar_url")},

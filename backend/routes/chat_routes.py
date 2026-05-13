@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 import database as db
 from auth import get_current_user
+from routes.push_routes import send_push_to_user
 
 router = APIRouter()
 
@@ -518,6 +519,19 @@ async def send_message(
     manager = _manager(request)
     await _broadcast_chat_message(manager, updated_conv, message, exclude=current_user["id"])
     await _broadcast_conversation_state(manager, updated_conv, exclude=current_user["id"])
+
+    # Push notification to offline participants
+    sender_name = current_user.get("name", "Someone")
+    push_body   = content.strip()[:80] if content.strip() else "Sent a file"
+    for pid in updated_conv.get("participant_ids", []):
+        if pid != current_user["id"]:
+            send_push_to_user(
+                pid,
+                title=f"💬 {sender_name}",
+                body=push_body,
+                url="/chat",
+                tag=f"chat_{chat_id}",
+            )
 
     return _fmt_msg(message, current_user)
 
