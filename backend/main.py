@@ -21,7 +21,6 @@ from routes.mentor_routes import router as mentor_router
 from routes.profile_routes import router as profile_router
 from routes.resource_routes import router as resource_router
 from routes.room_routes import router as room_router
-from routes.push_routes import router as push_router
 
 load_dotenv()
 
@@ -161,7 +160,6 @@ app.include_router(resource_router, prefix="/api/resources", tags=["Resources"])
 app.include_router(profile_router, prefix="/api/profile", tags=["Profile"])
 app.include_router(college_router, prefix="/api/colleges", tags=["Colleges"])
 app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamification"])
-app.include_router(push_router,          prefix="/api/push",          tags=["Push"])
 
 
 @app.websocket("/ws/{user_id}")

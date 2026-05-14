@@ -207,13 +207,6 @@ def toggle_follow(user_id: str, current_user: dict = Depends(get_current_user)):
             "is_read":    False,
             "created_at": _now(),
         })
-        send_push_to_user(
-            user_id,
-            title="New follower",
-            body=f"{current_user['name']} started following you.",
-            url=f"/profile/{current_user.get('username', '')}",
-            tag="follow",
-        )
         return {"following": True}
 
 # ══════════════════════════════════════════════════════════
