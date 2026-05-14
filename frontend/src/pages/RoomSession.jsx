@@ -33,21 +33,9 @@ const ICE_CONFIG = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject',
-    },
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ],
   iceCandidatePoolSize: 10,
 }
@@ -251,36 +239,38 @@ function MediaTile({ member, stream, mediaState, isHost, isMe, onKick, onTransfe
   const backgroundStyle = getTileBackgroundStyle(mediaState)
 
   useEffect(() => {
+    // Video element: always set srcObject; mute only own preview
     if (videoRef.current) {
       videoRef.current.srcObject = stream || null
-      videoRef.current
-        .play()
-        .catch(() => {})
+      videoRef.current.muted = isMe
+      videoRef.current.volume = isMe ? 0 : 1
+      videoRef.current.play().catch(() => {
+        // Retry on first user interaction
+        const retry = () => videoRef.current?.play().catch(() => {})
+        document.addEventListener('click', retry, { once: true })
+        document.addEventListener('touchstart', retry, { once: true })
+      })
     }
 
+    // Dedicated audio element for remote peers (avoids echo on local)
     if (audioRef.current && !isMe) {
       audioRef.current.srcObject = stream || null
       audioRef.current.muted = false
       audioRef.current.volume = 1.0
-      audioRef.current
-        .play()
-        .catch((err) => {
-          // Autoplay blocked — retry on user interaction
-          const retry = () => { audioRef.current?.play().catch(() => {}) }
-          document.addEventListener('click', retry, { once: true })
-        })
+      audioRef.current.play().catch(() => {
+        const retry = () => audioRef.current?.play().catch(() => {})
+        document.addEventListener('click', retry, { once: true })
+        document.addEventListener('touchstart', retry, { once: true })
+      })
     }
-
-    if (videoRef.current && !isMe && stream) {
-      videoRef.current.muted = false
-    }
-  }, [hasVideo, isMe, stream])
+  }, [stream, isMe])
 
   useEffect(() => {
+    // Re-attempt audio play whenever audio track becomes available
     if (!audioRef.current || isMe || !stream || !hasAudio) return
-    audioRef.current
-      .play()
-      .catch(() => {})
+    audioRef.current.muted = false
+    audioRef.current.volume = 1.0
+    audioRef.current.play().catch(() => {})
   }, [hasAudio, isMe, stream])
 
   return (
@@ -698,29 +688,48 @@ export default function RoomSession() {
     }
 
     pc.ontrack = (event) => {
-      const incomingTracks = event.streams?.[0]?.getTracks?.() || [event.track]
+      // Prefer the full stream from event.streams[0]; fall back to building one from the track
+      const incomingStream = event.streams?.[0]
+
       setRemoteStreams((previous) => {
-        const existingTracks = previous[remoteUserId]?.getTracks?.() || []
-        const mergedTracks = [...existingTracks]
+        const existing = previous[remoteUserId]
 
-        incomingTracks.forEach((track) => {
-          const alreadyPresent = mergedTracks.some((existingTrack) => existingTrack.id === track.id)
-          if (!alreadyPresent) {
-            mergedTracks.push(track)
-          }
-        })
-
-        return {
-          ...previous,
-          [remoteUserId]: new MediaStream(mergedTracks),
+        if (incomingStream) {
+          // Use the stream directly — most reliable approach
+          return { ...previous, [remoteUserId]: incomingStream }
         }
+
+        // No stream attached — add the track to an existing or new MediaStream
+        const target = existing || new MediaStream()
+        const alreadyPresent = target.getTracks().some((t) => t.id === event.track.id)
+        if (!alreadyPresent) {
+          target.addTrack(event.track)
+        }
+        return { ...previous, [remoteUserId]: target }
       })
     }
 
+    pc.ontrack_ended = () => {
+      // Rebuild when a track ends so UI updates correctly
+      setRemoteStreams((previous) => ({ ...previous }))
+    }
+
     pc.onconnectionstatechange = () => {
-      if (['failed', 'closed'].includes(pc.connectionState)) {
+      const state = pc.connectionState
+      if (['failed', 'closed'].includes(state)) {
         cleanupPeer(remoteUserId)
       }
+      if (state === 'disconnected') {
+        setTimeout(() => {
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+            cleanupPeer(remoteUserId)
+          }
+        }, 4000)
+      }
+    }
+
+    pc.onicecandidateerror = (e) => {
+      if (e.errorCode !== 701) console.warn('ICE error', e.errorCode, e.errorText)
     }
 
     syncPeerMediaForUser(remoteUserId)
@@ -950,14 +959,8 @@ export default function RoomSession() {
         }))
       }
 
-      if (!peerConnectionsRef.current[remoteUserId]) {
-        // Deterministic tie-break: lexicographically larger ID is the "offerer".
-        // This guarantees exactly one side sends the offer regardless of ID format.
-        const myId = String(currentUser?.id || '')
-        const theirId = String(remoteUserId || '')
-        if (myId !== theirId && myId > theirId) {
-          createOfferForUser(remoteUserId)
-        }
+      if (!peerConnectionsRef.current[remoteUserId] && String(currentUser?.id || '') > String(remoteUserId)) {
+        createOfferForUser(remoteUserId)
       }
     })
   }, [createOfferForUser, currentUser?.id, members])
@@ -986,12 +989,8 @@ export default function RoomSession() {
         [msg.user_id]: previous[msg.user_id] || defaultMediaState(),
       }))
 
-      {
-        const myId = String(currentUser?.id || '')
-        const theirId = String(msg.user_id || '')
-        if (myId !== theirId && myId > theirId) {
-          createOfferForUser(msg.user_id)
-        }
+      if (String(currentUser?.id || '') > String(msg.user_id || '')) {
+        createOfferForUser(msg.user_id)
       }
 
       refreshRoomMembers()

@@ -92,6 +92,7 @@ export const useWSStore = create((set, get) => ({
   onlineUsers: new Set(),
   typingUsers: {},
   unreadChats: 0,
+  _activeChat: null,
   _listeners: {},
   _reconnectTimer: null,
   _manualDisconnect: false,
@@ -276,12 +277,20 @@ export const useWSStore = create((set, get) => ({
     switch (msg.type) {
       case 'chat':
       case 'chat_message': {
-        if (!isRoomChat(msg.chat_id)) {
-          set((state) => ({
-            unreadChats: state.unreadChats + 1,
-          }))
-        }
+        // Emit first — let ChatConversation decide if it's the active chat
         get()._emit('chat_message', msg)
+        // Increment unread only if no listener consumed it as "active"
+        // We use a small delay so the component handler runs first
+        if (!isRoomChat(msg.chat_id)) {
+          setTimeout(() => {
+            // If the chat page marked it read, refreshUnreadChats handles it.
+            // We still increment here as a fallback for background messages.
+            const activeChat = get()._activeChat
+            if (activeChat !== msg.chat_id) {
+              set((state) => ({ unreadChats: state.unreadChats + 1 }))
+            }
+          }, 100)
+        }
         break
       }
 
@@ -357,20 +366,31 @@ export const useWSStore = create((set, get) => ({
   },
 
   on: (event, cb) => {
+    // Use a wrapper object so reference equality always works for cleanup
+    const wrapper = { fn: cb }
     set((state) => {
       const listeners = { ...state._listeners }
-      listeners[event] = [...(listeners[event] || []), cb]
+      listeners[event] = [...(listeners[event] || []), wrapper]
       return { _listeners: listeners }
     })
 
-    return () => get().off(event, cb)
+    // Return unsubscribe function
+    return () => {
+      set((state) => {
+        const listeners = { ...state._listeners }
+        if (listeners[event]) {
+          listeners[event] = listeners[event].filter((w) => w !== wrapper)
+        }
+        return { _listeners: listeners }
+      })
+    }
   },
 
   off: (event, cb) => {
     set((state) => {
       const listeners = { ...state._listeners }
       if (listeners[event]) {
-        listeners[event] = listeners[event].filter((listener) => listener !== cb)
+        listeners[event] = listeners[event].filter((w) => w.fn !== cb)
       }
       return { _listeners: listeners }
     })
@@ -378,9 +398,10 @@ export const useWSStore = create((set, get) => ({
 
   _emit: (event, data) => {
     const listeners = get()._listeners[event] || []
-    listeners.forEach((listener) => {
+    // Snapshot the array to avoid issues if listeners modify the list
+    ;[...listeners].forEach((wrapper) => {
       try {
-        listener(data)
+        wrapper.fn(data)
       } catch {
         // Ignore listener errors so one subscriber does not break others.
       }
@@ -392,6 +413,7 @@ export const useWSStore = create((set, get) => ({
   whoIsTyping: (chatId) => Array.from(get().typingUsers[chatId] || []),
   decrementUnread: () => set((state) => ({ unreadChats: Math.max(0, state.unreadChats - 1) })),
   setUnreadChats: (count) => set({ unreadChats: count }),
+  setActiveChat: (chatId) => set({ _activeChat: chatId }),
 }))
 
 function notifIcon(type) {

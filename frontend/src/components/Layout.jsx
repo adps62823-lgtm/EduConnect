@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import useAuthStore from '@/store/authStore'
 import useThemeStore from '@/store/themeStore'
@@ -11,21 +11,14 @@ export default function Layout() {
   const connect         = useWSStore(s => s.connect)
   const disconnect      = useWSStore(s => s.disconnect)
   const loadNotifs      = useNotifStore(s => s.load)
-  const didConnect      = useRef(false)
-
   useEffect(() => {
-    if (user?.id && !didConnect.current) {
-      didConnect.current = true
-      try { connect(user.id) } catch (e) { console.warn('WS connect failed:', e) }
-      try { loadNotifs() }    catch (e) { console.warn('loadNotifs failed:', e) }
-    }
+    if (!user?.id) return
+    try { connect(user.id) } catch (e) { console.warn('WS connect failed:', e) }
+    try { loadNotifs() }    catch (e) { console.warn('loadNotifs failed:', e) }
     return () => {
-      if (didConnect.current) {
-        try { disconnect() } catch (e) {}
-        didConnect.current = false
-      }
+      try { disconnect() } catch (e) {}
     }
-  }, [user?.id])
+  }, [user?.id, connect, disconnect, loadNotifs])
 
   const isLeft   = navbar_position === 'left'
   const isTop    = navbar_position === 'top'
