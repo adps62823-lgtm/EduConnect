@@ -420,7 +420,6 @@ export default function ChatConversation() {
   const whoIsTyping = useWSStore((state) => state.whoIsTyping)
   const isOnline = useWSStore((state) => state.isOnline)
   const setUnreadChats = useWSStore((state) => state.setUnreadChats)
-  const setActiveChat  = useWSStore((state) => state.setActiveChat)
 
   const [conv, setConv] = useState(null)
   const [messages, setMessages] = useState([])
@@ -487,13 +486,11 @@ export default function ChatConversation() {
   }, [chatId, markConversationRead, navigate])
 
   useEffect(() => {
-    setActiveChat(chatId)
     loadConversation()
     return () => {
       clearTimeout(typingTimer.current)
-      setActiveChat(null)
     }
-  }, [loadConversation, chatId, setActiveChat])
+  }, [loadConversation])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

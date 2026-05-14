@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -105,11 +105,6 @@ export default function Navbar() {
   const isLeft   = navbar_position === 'left'
   const isTop    = navbar_position === 'top'
   const isBottom = !isLeft && !isTop
-
-  // Close menu whenever route changes — prevents stuck overlay
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
 
   // Resolve the real destination — profile goes to /profile/:username
   function resolveTo(to) {
@@ -274,13 +269,11 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileMenuOpen(false)}
-            onPointerDown={() => setMobileMenuOpen(false)}
             style={{
               position: 'fixed',
               inset: 0,
               background: 'rgba(0,0,0,0.5)',
               zIndex: 99,
-              touchAction: 'none',
             }}
           />
           {/* Drawer panel */}
@@ -456,3 +449,4 @@ export default function Navbar() {
     </>
   )
 }
+
