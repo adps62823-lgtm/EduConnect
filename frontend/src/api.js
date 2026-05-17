@@ -3,11 +3,37 @@
  * Auto-unwraps axios .data so every caller gets the data directly
  */
 import axios from 'axios'
+import { clearAuthStorage, readToken } from '@/store/authStorage'
 
-const api = axios.create({ baseURL: '/api', timeout: 30000 })
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '/api'
+const RAW_WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL?.trim() || ''
+
+function stripTrailingSlash(value) {
+  return value.replace(/\/+$/, '')
+}
+
+const API_BASE_URL = stripTrailingSlash(RAW_API_BASE_URL)
+
+function resolveWebSocketBaseUrl() {
+  if (RAW_WS_BASE_URL) {
+    return stripTrailingSlash(RAW_WS_BASE_URL)
+  }
+
+  if (/^https?:\/\//i.test(API_BASE_URL)) {
+    const url = new URL(API_BASE_URL)
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    url.pathname = url.pathname.replace(/\/api\/?$/, '/ws')
+    return stripTrailingSlash(url.toString())
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/ws`
+}
+
+const api = axios.create({ baseURL: API_BASE_URL, timeout: 30000 })
 
 api.interceptors.request.use((config) => {
-  const token = sessionStorage.getItem('token')
+  const token = readToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -16,8 +42,7 @@ api.interceptors.response.use(
   (res) => res.data,   // ← auto-unwrap: callers get data directly, not res.data
   (err) => {
     if (err.response?.status === 401) {
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
+      clearAuthStorage()
       window.location.href = '/login'
     }
     return Promise.reject(err)
@@ -168,6 +193,5 @@ export const gameAPI = {
 }
 
 export const createWebSocket = (userId) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  return new WebSocket(`${protocol}//${window.location.host}/ws/${userId}`)
+  return new WebSocket(`${resolveWebSocketBaseUrl()}/${userId}`)
 }

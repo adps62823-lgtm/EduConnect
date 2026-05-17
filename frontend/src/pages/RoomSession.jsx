@@ -688,30 +688,43 @@ export default function RoomSession() {
     }
 
     pc.ontrack = (event) => {
-      // Prefer the full stream from event.streams[0]; fall back to building one from the track
-      const incomingStream = event.streams?.[0]
-
+      // Merge tracks into an existing stream so renegotiations do not drop audio/video.
       setRemoteStreams((previous) => {
         const existing = previous[remoteUserId]
-
-        if (incomingStream) {
-          // Use the stream directly — most reliable approach
-          return { ...previous, [remoteUserId]: incomingStream }
-        }
-
-        // No stream attached — add the track to an existing or new MediaStream
         const target = existing || new MediaStream()
-        const alreadyPresent = target.getTracks().some((t) => t.id === event.track.id)
-        if (!alreadyPresent) {
-          target.addTrack(event.track)
-        }
+
+        const incomingTracks =
+          event.streams?.[0]?.getTracks?.() && event.streams[0].getTracks().length > 0
+            ? event.streams[0].getTracks()
+            : [event.track]
+
+        incomingTracks.forEach((track) => {
+          const alreadyPresent = target.getTracks().some((t) => t.id === track.id)
+          if (!alreadyPresent) {
+            target.addTrack(track)
+          }
+        })
+
         return { ...previous, [remoteUserId]: target }
       })
-    }
 
-    pc.ontrack_ended = () => {
-      // Rebuild when a track ends so UI updates correctly
-      setRemoteStreams((previous) => ({ ...previous }))
+      event.track.onended = () => {
+        setRemoteStreams((previous) => {
+          const current = previous[remoteUserId]
+          if (!current) return previous
+
+          const nextStream = new MediaStream(
+            current.getTracks().filter((track) => track.readyState === 'live')
+          )
+          const next = { ...previous }
+          if (nextStream.getTracks().length === 0) {
+            delete next[remoteUserId]
+          } else {
+            next[remoteUserId] = nextStream
+          }
+          return next
+        })
+      }
     }
 
     pc.onconnectionstatechange = () => {

@@ -704,7 +704,15 @@ export default function ChatConversation() {
   const online = !conv.is_group && other && isOnline(other.id)
 
   return (
-    <div className="chat-window" style={{ height: '100%' }}>
+    <div
+      className="chat-window"
+      style={{
+        height: '100%',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -821,16 +829,17 @@ export default function ChatConversation() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Fixed input bar at bottom */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'var(--surface)',
-        borderTop: '1px solid var(--border)',
-        zIndex: 100,
-      }}>
+      <div
+        className="chat-input-bar"
+        style={{
+          position: 'sticky',
+          bottom: 0,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
+          zIndex: 5,
+          marginTop: 'auto',
+        }}
+      >
         <AnimatePresence>
           {file && (
             <motion.div

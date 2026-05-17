@@ -6,26 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:mobile": "CAPACITOR_BUILD=true vite build",
-    "build:mobile:win": "set CAPACITOR_BUILD=true && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "cap:sync": "npm run build:mobile && npx cap sync",
-    "cap:android": "npm run build:mobile && npx cap sync android && npx cap open android",
-    "cap:ios": "npm run build:mobile && npx cap sync ios && npx cap open ios"
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
-    "@capacitor/browser": "^6.0.0",
-    "@capacitor/camera": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/filesystem": "^6.0.0",
-    "@capacitor/haptics": "^6.0.0",
-    "@capacitor/keyboard": "^6.0.0",
-    "@capacitor/network": "^6.0.0",
-    "@capacitor/push-notifications": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
     "@uiw/react-color": "^2.1.1",
     "axios": "^1.7.2",
     "date-fns": "^3.6.0",
@@ -42,7 +26,6 @@
     "zustand": "^4.5.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",

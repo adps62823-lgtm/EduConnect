@@ -4,10 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
-
-  // IMPORTANT for Capacitor: assets must use relative paths in the native build.
-  // We detect the build target via an env var set in package.json scripts.
-  base: process.env.CAPACITOR_BUILD ? './' : '/',
+  base: '/',
 
   resolve: {
     alias: {

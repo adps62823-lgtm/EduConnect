@@ -1,32 +1,37 @@
 import { create } from 'zustand'
 import { authAPI } from '@/api'
+import {
+  clearAuthStorage,
+  persistAuth,
+  persistUser,
+  readAuthSnapshot,
+} from '@/store/authStorage'
+
+const initialAuth = readAuthSnapshot()
 
 const useAuthStore = create((set, get) => ({
-  user:    null,
-  token:   null,
+  user:    initialAuth.user,
+  token:   initialAuth.token,
   loading: false,
   error:   null,
+  hydrated: true,
 
   initAuth: () => {
-    try {
-      const token = sessionStorage.getItem('token')
-      const user  = sessionStorage.getItem('user')
-      if (token && user) {
-        set({ token, user: JSON.parse(user) })
-        get().refreshMe()
-      }
-    } catch {
-      sessionStorage.removeItem('token')
-      sessionStorage.removeItem('user')
+    const { token, user } = readAuthSnapshot()
+    if (token) {
+      set({ token, user, hydrated: true })
+      get().refreshMe()
+      return
     }
+    clearAuthStorage()
+    set({ user: null, token: null, hydrated: true })
   },
 
   register: async (data) => {
     set({ loading: true, error: null })
     try {
       const { access_token, user } = await authAPI.register(data)
-      sessionStorage.setItem('token', access_token)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      persistAuth(access_token, user)
       set({ token: access_token, user, loading: false })
       return { success: true }
     } catch (err) {
@@ -40,8 +45,7 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true, error: null })
     try {
       const { access_token, user } = await authAPI.login(identifier, password)
-      sessionStorage.setItem('token', access_token)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      persistAuth(access_token, user)
       set({ token: access_token, user, loading: false })
       return { success: true }
     } catch (err) {
@@ -52,16 +56,15 @@ const useAuthStore = create((set, get) => ({
   },
 
   logout: () => {
-    sessionStorage.removeItem('token')
-    sessionStorage.removeItem('user')
-    set({ user: null, token: null })
+    clearAuthStorage()
+    set({ user: null, token: null, error: null })
     window.location.href = '/login'
   },
 
   refreshMe: async () => {
     try {
       const user = await authAPI.me()
-      sessionStorage.setItem('user', JSON.stringify(user))
+      persistUser(user)
       set({ user })
     } catch {
       get().logout()
@@ -72,7 +75,7 @@ const useAuthStore = create((set, get) => ({
     set(state => {
       if (!state.user) return {}
       const user = { ...state.user, ...updates }
-      sessionStorage.setItem('user', JSON.stringify(user))
+      persistUser(user)
       return { user }
     })
   },
@@ -81,7 +84,7 @@ const useAuthStore = create((set, get) => ({
     set({ loading: true })
     try {
       const user = await authAPI.updateMe(data)
-      sessionStorage.setItem('user', JSON.stringify(user))
+      persistUser(user)
       set({ user, loading: false })
       return { success: true }
     } catch (err) {

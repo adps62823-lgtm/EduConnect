@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { Toaster } from 'react-hot-toast'
 import { AnimatePresence, motion } from 'framer-motion'
 import useAuthStore from '@/store/authStore'
+import { clearAuthStorage } from '@/store/authStorage'
 import useThemeStore from '@/store/themeStore'
 import Layout from '@/components/Layout'
 
@@ -63,7 +64,7 @@ class ErrorBoundary extends React.Component {
             </pre>
           </div>
           <button
-            onClick={() => { sessionStorage.clear(); window.location.href = '/login' }}
+            onClick={() => { clearAuthStorage(); window.location.href = '/login' }}
             style={{
               background: '#6366f1', color: '#fff', border: 'none',
               padding: '10px 24px', borderRadius: 10, cursor: 'pointer',
@@ -111,14 +112,18 @@ const PageLoader = () => (
 )
 
 const RequireAuth = ({ children }) => {
+  const hydrated = useAuthStore(s => s.hydrated)
   const token    = useAuthStore(s => s.token)
   const location = useLocation()
+  if (!hydrated) return <PageLoader />
   if (!token) return <Navigate to="/login" state={{ from: location }} replace />
   return children
 }
 
 const GuestOnly = ({ children }) => {
+  const hydrated = useAuthStore(s => s.hydrated)
   const token = useAuthStore(s => s.token)
+  if (!hydrated) return <PageLoader />
   if (token) return <Navigate to="/feed" replace />
   return children
 }
