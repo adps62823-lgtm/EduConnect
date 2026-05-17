@@ -500,7 +500,7 @@ function PostCard({ post: initialPost, onDelete }) {
   const [submitting, setSubmitting]     = useState(false)
   const [showMenu, setShowMenu]         = useState(false)
   const isLiked = post.is_liked
-  const isMe    = post.author?.id === currentUser?.id
+  const isMe    = Boolean(post.is_mine || post.author_id === currentUser?.id || post.author?.id === currentUser?.id)
 
   async function handleLike() {
     const wasLiked = post.is_liked

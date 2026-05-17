@@ -142,6 +142,7 @@ export const roomAPI = {
   getMyRooms:    ()               => api.get('/rooms/my'),
   createRoom:    (data)           => api.post('/rooms', data),
   getRoom:       (id)             => api.get(`/rooms/${id}`),
+  deleteRoom:    (id)             => api.delete(`/rooms/${id}`),
   joinRoom:      (id, data)       => api.post(`/rooms/${id}/join`, data),
   leaveRoom:     (id)             => api.post(`/rooms/${id}/leave`),
   kickMember:    (roomId, userId) => api.post(`/rooms/${roomId}/kick/${userId}`),

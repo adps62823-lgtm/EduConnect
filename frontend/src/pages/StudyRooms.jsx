@@ -7,7 +7,7 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Users,
+  Trash2,
 } from 'lucide-react'
 import { roomAPI } from '@/api'
 import Avatar from '@/components/Avatar'
@@ -18,7 +18,7 @@ import toast from 'react-hot-toast'
 const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'History', 'Geography', 'Economics', 'English', 'Computer Science', 'Other']
 const EXAM_TAGS = ['JEE', 'NEET', 'UPSC', 'CAT', 'GATE', 'CA', 'SAT', 'GCSE', 'IB', 'General']
 
-function RoomCard({ room, isJoined, onJoin }) {
+function RoomCard({ room, isJoined, onJoin, onDelete }) {
   const isFull = room.member_count >= room.max_members
   const canEnter = isJoined || !isFull
   const pct = room.max_members ? (room.member_count / room.max_members) * 100 : 0
@@ -125,6 +125,16 @@ function RoomCard({ room, isJoined, onJoin }) {
       >
         {isJoined ? 'Enter Room' : isFull ? 'Room Full' : room.is_private ? 'Join with Password' : 'Join Room'}
       </Button>
+      {room.is_mine && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(room)}
+          style={{ width: '100%', color: 'var(--red)', borderColor: 'var(--border)' }}
+        >
+          <Trash2 size={14} /> Delete Room
+        </Button>
+      )}
     </motion.div>
   )
 }
@@ -392,6 +402,20 @@ export default function StudyRooms() {
     }
   }
 
+  async function handleDeleteRoom(room) {
+    if (!room?.id) return
+    if (!window.confirm(`Delete "${room.name}" permanently?`)) return
+
+    try {
+      await roomAPI.deleteRoom(room.id)
+      setRooms((previous) => previous.filter((item) => item.id !== room.id))
+      setMyRooms((previous) => previous.filter((item) => item.id !== room.id))
+      toast.success('Room deleted.')
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not delete room.')
+    }
+  }
+
   function handleRoomCreated(room) {
     setRooms((previous) => [room, ...previous.filter((item) => item.id !== room.id)])
     setMyRooms((previous) => [room, ...previous.filter((item) => item.id !== room.id)])
@@ -533,6 +557,7 @@ export default function StudyRooms() {
                   room={room}
                   isJoined={joinedRoomIds.has(room.id)}
                   onJoin={handleJoin}
+                  onDelete={handleDeleteRoom}
                 />
               ))}
             </div>

@@ -14,6 +14,7 @@ import {
   Send,
   Settings,
   Square,
+  Trash2,
   UserMinus,
   Video,
   VideoOff,
@@ -1045,6 +1046,12 @@ export default function RoomSession() {
       refreshRoomMembers()
     })
 
+    const unsubRoomDeleted = wsOn('room_deleted', (msg) => {
+      if (msg.room_id !== roomId) return
+      toast('Room was deleted by the creator.')
+      navigate('/rooms')
+    })
+
     const unsubOffer = wsOn('webrtc_offer', async (msg) => {
       if (msg.room_id !== roomId || msg.from === currentUser?.id) return
       const remoteUserId = msg.from
@@ -1227,6 +1234,7 @@ export default function RoomSession() {
       unsubJoin()
       unsubLeave()
       unsubKick()
+      unsubRoomDeleted()
       unsubOffer()
       unsubAnswer()
       unsubIce()
@@ -1431,6 +1439,21 @@ export default function RoomSession() {
       navigate('/rooms')
     } catch {
       toast.error('Could not leave room.')
+    }
+  }
+
+  async function handleDeleteRoom() {
+    if (!isHost) return
+    if (!window.confirm('Delete this room for everyone? This cannot be undone.')) {
+      return
+    }
+
+    try {
+      await roomAPI.deleteRoom(roomId)
+      toast.success('Room deleted.')
+      navigate('/rooms')
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Could not delete room.')
     }
   }
 
@@ -1860,6 +1883,15 @@ export default function RoomSession() {
             <button className="btn btn-danger btn-sm" onClick={handleLeave} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <LogOut size={13} /> Leave
             </button>
+            {isHost && (
+              <button
+                className="btn btn-sm"
+                onClick={handleDeleteRoom}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--red-light)', color: 'var(--red)' }}
+              >
+                <Trash2 size={13} /> Delete Room
+              </button>
+            )}
           </div>
         </div>
 
