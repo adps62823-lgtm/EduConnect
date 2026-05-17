@@ -150,6 +150,14 @@ function getTileBackgroundStyle(mediaState) {
   }
 }
 
+function shouldInitiateForPeer(localId, remoteId) {
+  if (!localId || !remoteId) return false
+  const left = String(localId)
+  const right = String(remoteId)
+  if (left === right) return false
+  return left.localeCompare(right) > 0
+}
+
 function drawStroke(ctx, stroke) {
   if (!ctx || !stroke?.points?.length) return
 
@@ -972,7 +980,7 @@ export default function RoomSession() {
         }))
       }
 
-      if (!peerConnectionsRef.current[remoteUserId] && String(currentUser?.id || '') > String(remoteUserId)) {
+      if (!peerConnectionsRef.current[remoteUserId] && shouldInitiateForPeer(currentUser?.id, remoteUserId)) {
         createOfferForUser(remoteUserId)
       }
     })
@@ -1002,7 +1010,7 @@ export default function RoomSession() {
         [msg.user_id]: previous[msg.user_id] || defaultMediaState(),
       }))
 
-      if (String(currentUser?.id || '') > String(msg.user_id || '')) {
+      if (shouldInitiateForPeer(currentUser?.id, msg.user_id)) {
         createOfferForUser(msg.user_id)
       }
 
@@ -1043,7 +1051,7 @@ export default function RoomSession() {
       const connection = ensurePeerConnection(remoteUserId)
       if (!connection) return
 
-      const polite = String(currentUser?.id || '') > String(remoteUserId || '')
+      const polite = shouldInitiateForPeer(currentUser?.id, remoteUserId)
       const offerCollision = makingOfferRef.current[remoteUserId] || connection.pc.signalingState !== 'stable'
 
       if (offerCollision && !polite) {
