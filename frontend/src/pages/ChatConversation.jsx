@@ -901,7 +901,7 @@ export default function ChatConversation() {
             }}
             placeholder="Type a message..."
             style={{
-              flex: 'row',
+              display: 'inline-flex',
               background: 'var(--surface-2)',
               border: '1px solid var(--border)',
               borderRadius: 20,
