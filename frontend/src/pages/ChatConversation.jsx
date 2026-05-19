@@ -795,7 +795,8 @@ export default function ChatConversation() {
           flexDirection: 'column',
           gap: '8px',
           WebkitOverflowScrolling: 'touch',
-          paddingBottom: '120px', // Extra space for fixed input bar
+          paddingBottom: '180px',
+          marginBottom: 0,
         }}
       >
         {loadingMore && (
@@ -832,12 +833,13 @@ export default function ChatConversation() {
       <div
         className="chat-input-bar"
         style={{
-          position: 'sticky',
-          bottom: 0,
+          position: 'fixed',
+          bottom: 60,
+          left: 0,
+          right: 0,
           background: 'var(--surface)',
           borderTop: '1px solid var(--border)',
-          zIndex: 5,
-          marginTop: 'auto',
+          zIndex: 50,
         }}
       >
         <AnimatePresence>
@@ -876,7 +878,8 @@ export default function ChatConversation() {
           paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
+          gap: 8,
+          width: '100%',
         }}>
           <input
             ref={fileRef}
@@ -901,7 +904,7 @@ export default function ChatConversation() {
             }}
             placeholder="Type a message..."
             style={{
-              display: 'inline-flex',
+              flex: 1,
               background: 'var(--surface-2)',
               border: '1px solid var(--border)',
               borderRadius: 20,
