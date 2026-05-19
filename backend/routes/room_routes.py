@@ -160,6 +160,28 @@ def get_room(room_id: str, current_user: dict = Depends(get_current_user)):
     }
 
 
+@router.delete("/{room_id}")
+async def delete_room(room_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    room = _ensure_room_exists(room_id)
+    if room["host_id"] != current_user["id"]:
+        raise HTTPException(403, "Only the room creator can delete this room.")
+
+    member_ids = _room_member_user_ids(room_id)
+    db.delete_many("room_members", room_id=room_id)
+    db.delete_one("rooms", room_id)
+
+    manager = getattr(request.app.state, "manager", None)
+    if manager is not None:
+        payload = {
+            "type": "room_deleted",
+            "room_id": room_id,
+            "actor_id": current_user["id"],
+        }
+        await manager.send_to_users(member_ids, payload, exclude=current_user["id"])
+
+    return {"message": "Room deleted."}
+
+
 @router.post("/{room_id}/join")
 def join_room(room_id: str, req: JoinRoom, current_user: dict = Depends(get_current_user)):
     room = _ensure_room_exists(room_id)

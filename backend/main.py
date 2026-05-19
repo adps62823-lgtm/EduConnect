@@ -132,12 +132,6 @@ app = FastAPI(
 
 app.state.manager = manager
 
-origins = [
-    os.getenv("FRONTEND_URL", "http://localhost:5173"),
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
